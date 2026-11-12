@@ -2,6 +2,7 @@ import type { ChatEvent, DishCard, ErrorCode } from '@garfo/shared';
 import { create } from 'zustand';
 import { ApiRequestError, api, NETWORK_ERROR_MESSAGE } from '@/lib/api';
 import { getStoredConversationId, storeConversationId } from '@/lib/session';
+import { createSilenceWatcher } from '@/lib/silence-watcher';
 import { streamChat } from '@/lib/sse';
 import { useCartStore } from './cart.store';
 
@@ -32,6 +33,8 @@ interface ChatState {
   conversationId: string | null;
   status: ChatStatus;
   error: ChatError | null;
+  /** 8 s without any stream event while streaming: show the "slower than usual" notice. */
+  slow: boolean;
   hydrated: boolean;
   hydrate: () => Promise<void>;
   send: (text: string) => Promise<void>;
@@ -119,6 +122,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     conversationId: null,
     status: 'idle',
     error: null,
+    slow: false,
     hydrated: false,
 
     async hydrate() {
@@ -158,6 +162,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       abortController = controller;
       const { signal } = controller;
       const flags = { finished: false };
+      const watcher = createSilenceWatcher((slow) => set({ slow }));
       set((state) => ({
         status: 'streaming',
         error: null,
@@ -172,7 +177,12 @@ export const useChatStore = create<ChatState>((set, get) => {
         await streamChat(
           message,
           get().conversationId,
-          { onEvent: (e) => handleEvent(e, flags) },
+          {
+            onEvent: (e) => {
+              watcher.touch();
+              handleEvent(e, flags);
+            },
+          },
           signal,
         );
         // The stream may also close with neither `done` nor `error` (proxy cut, server restart).
@@ -189,6 +199,7 @@ export const useChatStore = create<ChatState>((set, get) => {
           status: 'error',
         });
       } finally {
+        watcher.stop();
         // A reset (new conversation) may already have started another round: leave it alone.
         if (abortController === controller) {
           abortController = null;
@@ -205,7 +216,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     reset() {
       abortController?.abort();
       storeConversationId(null);
-      set({ messages: [], conversationId: null, status: 'idle', error: null });
+      set({ messages: [], conversationId: null, status: 'idle', error: null, slow: false });
     },
 
     dismissError() {
