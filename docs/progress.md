@@ -4,15 +4,15 @@
 
 > Sessão autônoma do líder técnico (12/11/2026). Processo: briefing em `docs/blocks/bloco-N.md` → implementer → reviewer (máx. 3 ciclos) → atualizar este arquivo. Decisões em `docs/decisions-log.md`; pendências humanas em `docs/pending-human.md`. Nunca push/merge/rebase.
 
-| Bloco                | Branch             | Estado                                                                                                      |
-| -------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------- |
-| 1 — Fundação         | `feat/foundation`  | Aprovado pelo reviewer. Correções 1.1 (seed reequilibrado, coerência tag ⇔ alergênico) **em implementação** |
-| 2 — Busca e carrinho | `feat/search-cart` | Briefing pronto (`docs/blocks/bloco-2.md`); branch ainda não criada                                         |
-| 3 — Agente           | `feat/agent`       | Rascunho do briefing pronto (`docs/blocks/bloco-3.md`)                                                      |
-| 4 — Front e deploy   | `feat/web`         | Não iniciado                                                                                                |
-| 5 — Avaliação e docs | `feat/evals-docs`  | Não iniciado                                                                                                |
+| Bloco                | Branch             | Estado                                                                                                     |
+| -------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| 1 — Fundação         | `feat/foundation`  | Aprovado. Correções 1.1 aprovadas (seed: 34 vegetarianos, 17 veganos; coerência tag ⇔ alergênico validada) |
+| 2 — Busca e carrinho | `feat/search-cart` | **Em implementação** (`docs/blocks/bloco-2.md`)                                                            |
+| 3 — Agente           | `feat/agent`       | Rascunho do briefing pronto (`docs/blocks/bloco-3.md`)                                                     |
+| 4 — Front e deploy   | `feat/web`         | Não iniciado                                                                                               |
+| 5 — Avaliação e docs | `feat/evals-docs`  | Não iniciado                                                                                               |
 
-**Próximo passo:** revisar o bloco 1.1 com o reviewer; se aprovado, criar `feat/search-cart` a partir de `feat/foundation` e delegar o bloco 2.
+**Próximo passo:** quando o implementer entregar o bloco 2 em `feat/search-cart`, revisar com o reviewer contra `docs/blocks/bloco-2.md`.
 
 ## Bloco 1 — Fundação (`feat/foundation`) · 12/11/2026
 
