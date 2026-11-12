@@ -25,7 +25,7 @@
 - `OpenAiEmbeddingProvider`: `embeddings.create` com o modelo `LLM_EMBEDDING_MODEL` e `dimensions: 1536`.
 - `FakeLlmProvider`: recebe um roteiro (lista de "turnos", cada um com texto e/ou tool calls) e devolve um por chamada, em chunks (texto quebrado em pedaços pequenos para simular streaming). Também registra os inputs recebidos (para os testes do bloco 3). O comportamento do fake **em runtime** (demo sem chave) é do bloco 3; aqui, se não houver roteiro, devolver uma resposta de texto fixa avisando que está em modo demonstração.
 - `FakeEmbeddingProvider`: determinístico **e lexical** (veja a decisão D2.1): normaliza o texto (minúsculas, sem acentos), quebra em tokens de 3+ letras, faz _feature hashing_ de cada token (sha256 → índice 0..1535 e sinal) e normaliza o vetor (L2). Textos que compartilham palavras ficam próximos.
-- Seleção por `LLM_PROVIDER` (`openai` | `fake`). Testes de unidade dos conversores e da agregação de tool calls com um stream simulado; **nenhum teste chama a API real**.
+- Seleção por `LLM_PROVIDER` (`openai` | `fake`). Se `LLM_PROVIDER` não estiver definido, usar `openai` quando houver `OPENAI_API_KEY` e `fake` caso contrário (D1.4), ajustando `config/env.ts` e o `.env.example`. Testes de unidade dos conversores e da agregação de tool calls com um stream simulado; **nenhum teste chama a API real**.
 - Cada provider de embedding expõe `modelId` (`"fake-lexical-v1"` ou o nome do modelo real).
 
 ### 4. `pnpm db:embed` (`apps/api/scripts/embed-dishes.ts`)
