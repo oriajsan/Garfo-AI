@@ -72,7 +72,7 @@ describe('Garfo API (e2e)', () => {
       expect(res.body).toEqual({
         status: 'ok',
         db: 'ok',
-        llm: expect.stringMatching(/^(openai|fake)$/),
+        llm: expect.stringMatching(/^(openai|fake)$/) as string,
       });
     });
 
