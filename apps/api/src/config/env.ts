@@ -19,7 +19,8 @@ export const envSchema = z
       .string()
       .min(1)
       .refine((url) => /^postgres(ql)?:\/\//.test(url), 'must be a postgresql:// URL'),
-    LLM_PROVIDER: z.enum(['openai', 'fake']),
+    /** Optional: defaults to `openai` when OPENAI_API_KEY is set, `fake` otherwise (D1.4). */
+    LLM_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['openai', 'fake']).optional()),
     OPENAI_API_KEY: optionalString,
     LLM_CHAT_MODEL: optionalString,
     LLM_EMBEDDING_MODEL: optionalString,
@@ -37,6 +38,11 @@ export const envSchema = z
     MAX_DAILY_CHAT_REQUESTS: z.preprocess(toNumber, z.number().int().positive().default(500)),
     PORT: z.preprocess(toNumber, z.number().int().positive().default(3001)),
   })
+  .transform((env) => ({
+    ...env,
+    LLM_PROVIDER:
+      env.LLM_PROVIDER ?? (env.OPENAI_API_KEY ? ('openai' as const) : ('fake' as const)),
+  }))
   .superRefine((env, ctx) => {
     if (env.LLM_PROVIDER !== 'openai') return;
     for (const key of ['OPENAI_API_KEY', 'LLM_CHAT_MODEL', 'LLM_EMBEDDING_MODEL'] as const) {
