@@ -95,7 +95,7 @@ embed (idempotentes, sem custo extra depois da primeira vez).
    | Variável                 | Valor                                     |
    | ------------------------ | ----------------------------------------- |
    | `NEXT_PUBLIC_API_URL`    | `https://garfo-api.up.railway.app/api/v1` |
-   | `NEXT_PUBLIC_GITHUB_URL` | `https://github.com/SEU-USUARIO/garfo-ai` |
+   | `NEXT_PUBLIC_GITHUB_URL` | `https://github.com/oriajsan/Garfo-AI`    |
 
    Essas variáveis são embutidas no bundle durante o build: se mudar alguma, faça **Redeploy**.
 
