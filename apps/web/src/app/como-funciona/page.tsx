@@ -97,7 +97,11 @@ const body = 'text-stone-600 dark:text-stone-300';
 export default function HowItWorksPage() {
   const result = EVAL_RESULT;
   const rows: Array<[string, string]> = [
-    ['Taxa de acerto', `${result.passRate}% (${result.passed} de ${result.total} casos)`],
+    [
+      result.status === 'done' ? 'Taxa de acerto (última execução)' : 'Taxa de acerto',
+      `${result.passRate}% (${result.passed} de ${result.total} casos)` +
+        (result.status === 'done' ? `; ${result.note}` : ''),
+    ],
     ['Latência por resposta (p50 / p95)', `${result.latencyP50Ms} ms / ${result.latencyP95Ms} ms`],
     ['Custo por conversa', `US$ ${result.costPerConversationUsd}`],
     ['Modelo avaliado', result.model],
