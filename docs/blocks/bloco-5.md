@@ -4,6 +4,14 @@
 - **Referências:** SPEC seções 1 (critérios de pronto), 8 (avaliação), 9 (CI `eval.yml`), 11 (README e currículo); briefings anteriores; `docs/decisions-log.md`.
 - **Pronto quando (nesta sessão):** `pnpm eval` está pronto e validado de ponta a ponta em modo fake; `/como-funciona` e README completos, com os números da avaliação marcados como `XX` até o dono rodar o eval com a chave real.
 
+## Contexto herdado dos blocos 2 a 4 (use, não recrie)
+
+- `AgentService.run(input: AgentInput, emitEvent: EmitEvent, signal: AbortSignal)` em `apps/api/src/chat/agent.service.ts` emite `ChatEvent`s (`packages/shared/src/chat.ts`). O eval deve criar a conversa como o `ChatController` faz (veja `chat.controller.ts` e `conversation.repository.ts`) e coletar os eventos; `tool_start` traz o nome da tool, mas os **argumentos** das tool calls precisam ser obtidos de outra forma (por exemplo, lendo as mensagens `ASSISTANT` persistidas da conversa com `toolCalls[].argsJson`, ou um _hook_ opcional e não intrusivo no `ToolRegistry`). Escolha a forma mais simples que não altere o comportamento de produção.
+- O rate limit e o teto diário ficam no controller; chamando o `AgentService` direto o eval não é afetado por eles.
+- Pratos indisponíveis existem (Kombucha); `recommendedDishesSatisfy` deve checar contra o banco também `available` e `isOpen`.
+- Já existe a página provisória `apps/web/src/app/como-funciona/`: substitua pela versão completa. Componentes e estilo do front estão em `apps/web/src/components/` (reaproveite `Header`).
+- `docs/deploy.md` já existe (bloco 4): o README deve linkar para ele em vez de repetir.
+
 ## Tarefas
 
 ### 1. Avaliação (`evals/`)
