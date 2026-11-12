@@ -52,7 +52,7 @@ export interface RunCaseOptions {
 
 /**
  * Runs one case. Whatever happens to the turns (success, `error` event, exception, eval
- * timeout) the counters (calls, retries, timeouts, fallbacks) are read at the very end and the
+ * timeout) the counters (calls, retries, timeouts, fallbacks, truncations) are read at the very end and the
  * result is always returned; the tool trace (not the persisted rows) is the source of the tool
  * calls, because a turn cut short is never persisted.
  */
@@ -79,6 +79,7 @@ export async function runCase(
   const retryWaitBefore = eventLog.waitMs;
   const timeoutsBefore = eventLog.timeouts;
   const fallbacksBefore = eventLog.fallbacks;
+  const truncationsBefore = eventLog.truncations;
   let interruption: TurnInterruption | undefined;
   let conversationId: string | undefined;
   let rows: Array<{ role: string; content: unknown }> = [];
@@ -237,6 +238,7 @@ export async function runCase(
       retryWaitMs: eventLog.waitMs - retryWaitBefore,
       timeouts: eventLog.timeouts - timeoutsBefore,
       fallbacks: eventLog.fallbacks - fallbacksBefore,
+      truncations: eventLog.truncations - truncationsBefore,
       finalReplyText: observation.finalReplyText,
     };
   } finally {

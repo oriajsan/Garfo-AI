@@ -225,6 +225,7 @@ async function main(): Promise<void> {
     console.log(
       `Timeouts de primeiro chunk: ${summary.totalTimeouts} no total; fallback usado ${summary.totalFallbacks} vez(es)`,
     );
+    console.log(`Respostas truncadas (llm_truncated): ${summary.totalTruncations} no total`);
     console.log(
       `Latência por resposta (sem a pausa): p50 ${Math.round(summary.latencyP50Ms)} ms, p95 ${Math.round(summary.latencyP95Ms)} ms`,
     );
