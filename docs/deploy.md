@@ -48,8 +48,8 @@ Arquivos de configuração já prontos no repositório:
    Confirme: `psql "$DATABASE_URL" -c 'SELECT count(*) FROM "Dish" WHERE embedding IS NOT NULL;'` deve devolver 80.
 
    O seed roda em uma transação interativa (atômica e idempotente) com cerca de 86 upserts. Contra o Neon, a latência
-   por consulta pode estourar o timeout padrão do Prisma (5 s) e dar `Transaction not found` / `Transaction already
-closed`. Por isso o seed usa `timeout` de 120000 ms e `maxWait` de 20000 ms. Se ainda estourar (rede lenta, banco
+   por consulta pode estourar o timeout padrão do Prisma (5 s) e dar erros como `Transaction not found` ou
+   `Transaction already closed`. Por isso o seed usa `timeout` de 120000 ms e `maxWait` de 20000 ms. Se ainda estourar (rede lenta, banco
    acordando), aumente com `SEED_TX_TIMEOUT_MS` e `SEED_TX_MAX_WAIT_MS` (inteiros positivos, em milissegundos; valor
    inválido dá erro antes de conectar):
 
