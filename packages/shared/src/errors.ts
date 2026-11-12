@@ -12,6 +12,7 @@ export const ERROR_CODES = [
   'VALIDATION_ERROR',
   'RESTAURANT_NOT_FOUND',
   'CART_ITEM_NOT_FOUND',
+  'NOT_FOUND',
   'INTERNAL_ERROR',
 ] as const;
 export const errorCodeSchema = z.enum(ERROR_CODES);
@@ -23,6 +24,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   DISH_NOT_FOUND: 404,
   RESTAURANT_NOT_FOUND: 404,
   CART_ITEM_NOT_FOUND: 404,
+  NOT_FOUND: 404,
   DIFFERENT_RESTAURANT: 409,
   DISH_UNAVAILABLE: 409,
   BELOW_MIN_ORDER: 422,
