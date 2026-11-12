@@ -55,6 +55,14 @@ export interface CaseOutcome {
   checks: CheckResult[];
 }
 
+/**
+ * A run that ended because the provider was overloaded or rate limited (LLM_OVERLOADED, or a raw
+ * 429/503) says nothing about the agent: it is classified as infrastructure, not as a failure.
+ */
+export function isInfrastructureFailure(runErrors: string[]): boolean {
+  return runErrors.some((error) => /^LLM_OVERLOADED\b/.test(error) || /\b(429|503)\b/.test(error));
+}
+
 const reais = (cents: number): string => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
 export function evaluateCase(evalCase: EvalCase, observation: Observation): CaseOutcome {

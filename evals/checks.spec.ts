@@ -1,4 +1,10 @@
-import { dishViolations, evaluateCase, type DishFacts, type Observation } from './checks';
+import {
+  dishViolations,
+  evaluateCase,
+  isInfrastructureFailure,
+  type DishFacts,
+  type Observation,
+} from './checks';
 import { type EvalCase } from './schema';
 
 const dish = (overrides: Partial<DishFacts>): DishFacts => ({
@@ -38,6 +44,17 @@ const failed = (c: EvalCase, o: Observation): string[] =>
   evaluateCase(c, o)
     .checks.filter((check) => !check.passed)
     .map((check) => check.name);
+
+describe('isInfrastructureFailure', () => {
+  it('flags LLM_OVERLOADED and raw 429/503 errors only', () => {
+    expect(isInfrastructureFailure(['LLM_OVERLOADED: sobrecarregado'])).toBe(true);
+    expect(isInfrastructureFailure(['429 Too Many Requests'])).toBe(true);
+    expect(isInfrastructureFailure(['503 upstream'])).toBe(true);
+    expect(isInfrastructureFailure(['LLM_ERROR: x'])).toBe(false);
+    expect(isInfrastructureFailure(['400 bad request'])).toBe(false);
+    expect(isInfrastructureFailure([])).toBe(false);
+  });
+});
 
 describe('evaluateCase', () => {
   it('passes a case with no expectations when the run completed', () => {

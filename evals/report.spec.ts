@@ -2,6 +2,7 @@ import {
   estimateCostUsd,
   percentile,
   renderMarkdown,
+  renderTerminalTable,
   summarize,
   type CaseResult,
   type RunInfo,
@@ -83,5 +84,33 @@ describe('summarize and renderMarkdown', () => {
     expect(md).toContain('provedor fake');
     expect(md).toContain('NÃO mede a qualidade do LLM');
     expect(md).toContain('não se aplica');
+  });
+});
+
+describe('infrastructure cases', () => {
+  const mixed = [
+    result({ id: 'a' }),
+    result({ id: 'b', passed: false }),
+    result({ id: 'c', passed: false, infra: true }),
+    result({ id: 'd', passed: false, infra: true }),
+  ];
+
+  it('excludes infra cases from the agent rate and counts them apart', () => {
+    const s = summarize(mixed, info);
+    expect(s).toMatchObject({ total: 4, passed: 1, infra: 2, evaluated: 2, rate: 0.5 });
+    expect(s.byCategory).toEqual([{ category: 'simple_filters', total: 2, passed: 1 }]);
+  });
+
+  it('shows the infrastructure status in the report and in the terminal table', () => {
+    const md = renderMarkdown(mixed, info);
+    expect(md).toContain('1/2 casos (50%)');
+    expect(md).toContain('sem os 2 casos com erro de infraestrutura');
+    expect(md).toContain('2 de 4 casos');
+    expect(md).toMatch(/`c` \| .* \| infraestrutura \|/);
+    expect(renderTerminalTable(mixed)).toContain('INFRA');
+  });
+
+  it('is silent about exclusions when nothing is infra', () => {
+    expect(renderMarkdown([result({})], info)).not.toContain('sem os');
   });
 });

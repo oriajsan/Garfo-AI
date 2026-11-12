@@ -10,7 +10,13 @@ import { ConversationRepository } from '../apps/api/src/chat/conversation.reposi
 import { validateEnv } from '../apps/api/src/config/env';
 import { PrismaService } from '../apps/api/src/prisma/prisma.service';
 import { collectDishRefs } from '../apps/api/src/tools/tool.format';
-import { dishViolations, evaluateCase, type DishFacts, type Observation } from './checks';
+import {
+  dishViolations,
+  evaluateCase,
+  isInfrastructureFailure,
+  type DishFacts,
+  type Observation,
+} from './checks';
 import {
   DEFAULT_PRICE_INPUT_USD_PER_MTOK,
   DEFAULT_PRICE_OUTPUT_USD_PER_MTOK,
@@ -204,6 +210,7 @@ async function runCase(
       id: evalCase.id,
       category: evalCase.category,
       passed: outcome.passed,
+      infra: isInfrastructureFailure(runErrors),
       checks: outcome.checks,
       inputTokens,
       outputTokens,
@@ -263,12 +270,14 @@ async function main(): Promise<void> {
       process.stdout.write(`[${index + 1}/${cases.length}] ${evalCase.id} ... `);
       const result = await runCase(evalCase, services, catalog);
       results.push(result);
-      console.log(result.passed ? 'ok' : 'FALHOU');
+      console.log(
+        result.infra ? 'INFRA (provedor sobrecarregado)' : result.passed ? 'ok' : 'FALHOU',
+      );
     }
 
     console.log('');
     console.log(renderTerminalTable(results));
-    const failures = results.filter((r) => !r.passed);
+    const failures = results.filter((r) => !r.passed && !r.infra);
     if (failures.length > 0) {
       console.log('\nFalhas:');
       for (const r of failures) {
@@ -282,7 +291,11 @@ async function main(): Promise<void> {
     const summary = summarize(results, info);
     console.log('');
     console.log(
-      `Acerto geral: ${summary.passed}/${summary.total} (${(summary.rate * 100).toFixed(0)}%)`,
+      `Acerto do agente: ${summary.passed}/${summary.evaluated} (${(summary.rate * 100).toFixed(0)}%)`,
+    );
+    console.log(
+      `Erros de infraestrutura (429/503): ${summary.infra} de ${summary.total} casos` +
+        (summary.infra > 0 ? ' (excluídos da taxa)' : ''),
     );
     for (const row of summary.byCategory)
       console.log(`  ${row.category}: ${row.passed}/${row.total}`);

@@ -5,6 +5,8 @@ export interface CaseResult {
   id: string;
   category: CaseCategory;
   passed: boolean;
+  /** Ended with a provider overload/rate limit (429/503): not an agent failure, not counted. */
+  infra?: boolean;
   checks: CheckResult[];
   inputTokens: number;
   outputTokens: number;
@@ -58,6 +60,11 @@ export function estimateCostUsd(
 export interface Summary {
   total: number;
   passed: number;
+  /** Cases that ended with a provider 429/503 error; excluded from `rate`. */
+  infra: number;
+  /** Cases the agent was really judged on: `total - infra`. */
+  evaluated: number;
+  /** passed / evaluated. */
   rate: number;
   byCategory: Array<{ category: CaseCategory; total: number; passed: number }>;
   avgInputTokens: number;
@@ -70,7 +77,9 @@ export interface Summary {
 
 export function summarize(results: CaseResult[], info: RunInfo): Summary {
   const total = results.length;
-  const passed = results.filter((r) => r.passed).length;
+  const infra = results.filter((r) => r.infra).length;
+  const evaluated = total - infra;
+  const passed = results.filter((r) => r.passed && !r.infra).length;
   const inputTokens = results.reduce((sum, r) => sum + r.inputTokens, 0);
   const outputTokens = results.reduce((sum, r) => sum + r.outputTokens, 0);
   const latencies = results.flatMap((r) => r.latenciesMs);
@@ -78,9 +87,11 @@ export function summarize(results: CaseResult[], info: RunInfo): Summary {
   return {
     total,
     passed,
-    rate: total === 0 ? 0 : passed / total,
+    infra,
+    evaluated,
+    rate: evaluated === 0 ? 0 : passed / evaluated,
     byCategory: CASE_CATEGORIES.map((category) => {
-      const own = results.filter((r) => r.category === category);
+      const own = results.filter((r) => r.category === category && !r.infra);
       return { category, total: own.length, passed: own.filter((r) => r.passed).length };
     }).filter((row) => row.total > 0),
     avgInputTokens: total === 0 ? 0 : inputTokens / total,
@@ -110,7 +121,10 @@ export function renderMarkdown(results: CaseResult[], info: RunInfo): string {
   lines.push('');
   if (info.provider === 'fake') lines.push(`> **Aviso:** ${FAKE_WARNING}`, '');
   lines.push(
-    `- **Taxa de acerto:** ${s.passed}/${s.total} casos (${pct(s.rate)})`,
+    `- **Taxa de acerto do agente:** ${s.passed}/${s.evaluated} casos (${pct(s.rate)})` +
+      (s.infra > 0 ? `, calculada sem os ${s.infra} casos com erro de infraestrutura` : ''),
+    `- **Erros de infraestrutura (429/503 do provedor):** ${s.infra} de ${s.total} casos` +
+      (s.infra > 0 ? ' (excluídos da taxa; não são falhas do agente)' : ''),
     `- **Modelo:** ${info.model}`,
     `- **Data:** ${info.date}`,
     `- **Tokens médios por caso:** ${Math.round(s.avgInputTokens)} de entrada, ${Math.round(s.avgOutputTokens)} de saída`,
@@ -135,7 +149,7 @@ export function renderMarkdown(results: CaseResult[], info: RunInfo): string {
     ...results.map((r) => {
       const failed = r.checks.filter((c) => !c.passed);
       const detail = failed.map((c) => `${c.name}: ${c.detail}`).join('; ');
-      return `| \`${r.id}\` | ${CATEGORY_LABELS[r.category]} | ${r.passed ? 'passou' : 'falhou'} | ${cell(detail)} |`;
+      return `| \`${r.id}\` | ${CATEGORY_LABELS[r.category]} | ${r.infra ? 'infraestrutura' : r.passed ? 'passou' : 'falhou'} | ${cell(detail)} |`;
     }),
     '',
   );
@@ -148,7 +162,7 @@ export function renderTerminalTable(results: CaseResult[]): string {
   const rows = results.map((r) => {
     const passedChecks = r.checks.filter((c) => c.passed).length;
     const ms = r.latenciesMs.reduce((a, b) => a + b, 0);
-    return `${r.id.padEnd(idWidth)}  ${(r.passed ? 'PASS' : 'FAIL').padEnd(4)}  ${`${passedChecks}/${r.checks.length}`.padEnd(5)}  ${String(ms).padStart(6)} ms`;
+    return `${r.id.padEnd(idWidth)}  ${(r.infra ? 'INFRA' : r.passed ? 'PASS' : 'FAIL').padEnd(5)}  ${`${passedChecks}/${r.checks.length}`.padEnd(5)}  ${String(ms).padStart(6)} ms`;
   });
-  return [`${'caso'.padEnd(idWidth)}  res.   checks     tempo`, ...rows].join('\n');
+  return [`${'caso'.padEnd(idWidth)}  res.    checks     tempo`, ...rows].join('\n');
 }
