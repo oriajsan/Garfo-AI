@@ -2,9 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   dishBaseSchema,
+  dishCardSchema,
   dishResultSchema,
   restaurantDetailSchema,
   restaurantSummarySchema,
+  type DishCard,
   type DishResult,
   type RestaurantDetail,
   type RestaurantSummary,
@@ -121,6 +123,36 @@ export class SearchService {
       ...dish,
       restaurant: dish.restaurant,
       score: null,
+    });
+  }
+
+  /** Current data of the given dishes as cards, in the order requested; unknown ids are skipped. */
+  async getDishCards(ids: string[]): Promise<DishCard[]> {
+    if (ids.length === 0) return [];
+    const dishes = await this.prisma.dish.findMany({
+      where: { id: { in: ids } },
+      include: { restaurant: true },
+    });
+    const byId = new Map(dishes.map((dish) => [dish.id, dish]));
+    return ids.flatMap((id) => {
+      const dish = byId.get(id);
+      if (!dish) return [];
+      return [
+        dishCardSchema.parse({
+          id: dish.id,
+          name: dish.name,
+          description: dish.description,
+          priceCents: dish.priceCents,
+          dietaryTags: dish.dietaryTags,
+          restaurant: {
+            slug: dish.restaurant.slug,
+            name: dish.restaurant.name,
+            emoji: dish.restaurant.emoji,
+          },
+          deliveryMinMinutes: dish.restaurant.deliveryMinMinutes,
+          deliveryMaxMinutes: dish.restaurant.deliveryMaxMinutes,
+        }),
+      ];
     });
   }
 
