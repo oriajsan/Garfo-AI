@@ -41,7 +41,8 @@ export function useReplaceCartAndAdd() {
   const setCart = useCartStore((s) => s.setCart);
   return useMutation({
     mutationFn: async (dishId: string) => {
-      await api.clearCart();
+      // Reflect the emptied cart right away so a failed add doesn't leave a stale one.
+      setCart(await api.clearCart());
       return api.addCartItem({ dishId, quantity: 1 });
     },
     onSuccess: setCart,
