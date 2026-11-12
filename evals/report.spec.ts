@@ -27,6 +27,8 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
   latenciesMs: [100],
   chatCalls: 2,
   embedCalls: 1,
+  retries: 0,
+  retryWaitMs: 0,
   ...overrides,
 });
 
@@ -135,7 +137,7 @@ describe('LLM calls per case', () => {
 
   it('shows the counts in the terminal table', () => {
     expect(renderTerminalTable(rs)).toContain('chat  emb');
-    expect(renderTerminalTable(rs).split('\n')[1]).toMatch(/ {3}3 {2} {2}1$/);
+    expect(renderTerminalTable(rs).split('\n')[1]).toMatch(/ {3}3 {2} {2}1 {2} {4}0$/);
   });
 });
 
@@ -170,5 +172,19 @@ describe('partial runs', () => {
   it('warns in the report banner', () => {
     expect(renderMarkdown([result({})], { ...info, partial: true })).toContain('Execução PARCIAL');
     expect(renderMarkdown([result({})], info)).not.toContain('Execução PARCIAL');
+  });
+});
+
+describe('retries', () => {
+  const rs = [result({ id: 'a', retries: 2, retryWaitMs: 4000 }), result({ id: 'b', retries: 0 })];
+
+  it('totals retries and backoff in the summary and report, per case in the table', () => {
+    const s = summarize(rs, info);
+    expect(s.totalRetries).toBe(2);
+    expect(s.totalRetryWaitMs).toBe(4000);
+    const md = renderMarkdown(rs, info);
+    expect(md).toContain('2 no total, somando 4000 ms');
+    expect(md).toMatch(/`a` \| .* \| passou \| 2 \| 1 \| 2 \|/);
+    expect(renderTerminalTable(rs)).toContain('retry');
   });
 });

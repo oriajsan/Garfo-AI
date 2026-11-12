@@ -16,6 +16,10 @@ export interface CaseResult {
   chatCalls: number;
   /** Embedding calls made during the case. */
   embedCalls: number;
+  /** 429/503 retries (logged `llm_retry`) during the case; their backoff is inside the latency. */
+  retries: number;
+  /** Total backoff of those retries, in ms. */
+  retryWaitMs: number;
   /** Final assistant text of the last turn; shown in the report for failed cases. */
   finalReplyText?: string;
 }
@@ -83,6 +87,8 @@ export interface Summary {
   latencyP95Ms: number;
   avgChatCalls: number;
   avgEmbedCalls: number;
+  totalRetries: number;
+  totalRetryWaitMs: number;
 }
 
 export function summarize(results: CaseResult[], info: RunInfo): Summary {
@@ -111,6 +117,8 @@ export function summarize(results: CaseResult[], info: RunInfo): Summary {
     latencyP50Ms: percentile(latencies, 50),
     latencyP95Ms: percentile(latencies, 95),
     avgChatCalls: total === 0 ? 0 : results.reduce((sum, r) => sum + r.chatCalls, 0) / total,
+    totalRetries: results.reduce((sum, r) => sum + r.retries, 0),
+    totalRetryWaitMs: results.reduce((sum, r) => sum + r.retryWaitMs, 0),
     avgEmbedCalls: total === 0 ? 0 : results.reduce((sum, r) => sum + r.embedCalls, 0) / total,
   };
 }
@@ -161,6 +169,7 @@ export function renderMarkdown(results: CaseResult[], info: RunInfo): string {
           `(US$ ${info.priceInputUsdPerMTok}/M tokens de entrada, US$ ${info.priceOutputUsdPerMTok}/M de saída)`,
     `- **Latência por resposta (sem a pausa do EVAL_DELAY_MS):** p50 ${Math.round(s.latencyP50Ms)} ms, p95 ${Math.round(s.latencyP95Ms)} ms`,
     `- **Chamadas ao LLM por caso (média):** ${s.avgChatCalls.toFixed(1)} de chat, ${s.avgEmbedCalls.toFixed(1)} de embeddings`,
+    `- **Retries 429/503:** ${s.totalRetries} no total, somando ${Math.round(s.totalRetryWaitMs)} ms de espera de backoff (incluídos na latência)`,
     '',
     '## Acerto por categoria',
     '',
@@ -172,12 +181,12 @@ export function renderMarkdown(results: CaseResult[], info: RunInfo): string {
     '',
     '## Acerto por caso',
     '',
-    '| Caso | Categoria | Resultado | Chat | Embeddings | Detalhe das falhas |',
-    '| --- | --- | --- | --- | --- | --- |',
+    '| Caso | Categoria | Resultado | Chat | Embeddings | Retries | Detalhe das falhas |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
     ...results.map((r) => {
       const failed = r.checks.filter((c) => !c.passed);
       const detail = failed.map((c) => `${c.name}: ${c.detail}`).join('; ');
-      return `| \`${r.id}\` | ${CATEGORY_LABELS[r.category]} | ${r.infra ? 'infraestrutura' : r.passed ? 'passou' : 'falhou'} | ${r.chatCalls} | ${r.embedCalls} | ${cell(detail)} |`;
+      return `| \`${r.id}\` | ${CATEGORY_LABELS[r.category]} | ${r.infra ? 'infraestrutura' : r.passed ? 'passou' : 'falhou'} | ${r.chatCalls} | ${r.embedCalls} | ${r.retries} | ${cell(detail)} |`;
     }),
     '',
   );
@@ -197,7 +206,9 @@ export function renderTerminalTable(results: CaseResult[]): string {
   const rows = results.map((r) => {
     const passedChecks = r.checks.filter((c) => c.passed).length;
     const ms = r.latenciesMs.reduce((a, b) => a + b, 0);
-    return `${r.id.padEnd(idWidth)}  ${(r.infra ? 'INFRA' : r.passed ? 'PASS' : 'FAIL').padEnd(5)}  ${`${passedChecks}/${r.checks.length}`.padEnd(5)}  ${String(ms).padStart(6)} ms  ${String(r.chatCalls).padStart(4)}  ${String(r.embedCalls).padStart(3)}`;
+    return `${r.id.padEnd(idWidth)}  ${(r.infra ? 'INFRA' : r.passed ? 'PASS' : 'FAIL').padEnd(5)}  ${`${passedChecks}/${r.checks.length}`.padEnd(5)}  ${String(ms).padStart(6)} ms  ${String(r.chatCalls).padStart(4)}  ${String(r.embedCalls).padStart(3)}  ${String(r.retries).padStart(5)}`;
   });
-  return [`${'caso'.padEnd(idWidth)}  res.    checks     tempo  chat  emb`, ...rows].join('\n');
+  return [`${'caso'.padEnd(idWidth)}  res.    checks     tempo  chat  emb  retry`, ...rows].join(
+    '\n',
+  );
 }

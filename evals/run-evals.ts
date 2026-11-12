@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { z } from 'zod';
 import { AppModule } from '../apps/api/src/app.module';
@@ -39,6 +40,7 @@ import {
   parseEvalDelayMs,
   RateGate,
 } from './rate-gate';
+import { RetryCountingLogger } from './retry-counter';
 import { selectCases } from './select';
 import { evalCasesFileSchema, type EvalCase } from './schema';
 
@@ -133,6 +135,7 @@ async function runCase(
   catalog: ReadonlyMap<string, DishFacts>,
   gate: RateGate,
   label: string,
+  retryLog: RetryCountingLogger,
 ): Promise<CaseResult> {
   const { agent, conversations, carts, prisma } = services;
   const sessionId = randomUUID();
@@ -142,6 +145,8 @@ async function runCase(
   const cartDishIdsPerTurn: string[][] = [];
   const latenciesMs: number[] = [];
   const callsBefore = gate.calls;
+  const retriesBefore = retryLog.count;
+  const retryWaitBefore = retryLog.waitMs;
   let finalReplyText = '';
   let inputTokens = 0;
   let outputTokens = 0;
@@ -246,6 +251,8 @@ async function runCase(
       latenciesMs,
       chatCalls: callsAfter.chat - callsBefore.chat,
       embedCalls: callsAfter.embed - callsBefore.embed,
+      retries: retryLog.count - retriesBefore,
+      retryWaitMs: retryLog.waitMs - retryWaitBefore,
       finalReplyText,
     };
   } finally {
@@ -272,6 +279,9 @@ async function main(): Promise<void> {
   // One gate shared by chat and embeddings, wrapping the production providers (their 429/503
   // retry stays underneath). Only the eval is paced; the API code is untouched.
   const gate = new RateGate(delayMs);
+  // `withRetry` logs each 429/503 retry through the Nest Logger; observe it, do not change it.
+  const retryLog = new RetryCountingLogger();
+  Logger.overrideLogger(retryLog);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(LLM_PROVIDER)
     .useFactory({
@@ -319,7 +329,7 @@ async function main(): Promise<void> {
     const results: CaseResult[] = [];
     for (const [index, { evalCase, label }] of selection.cases.entries()) {
       process.stdout.write(`[${index + 1}/${selection.cases.length}] ${label} ... `);
-      const result = await runCase(evalCase, services, catalog, gate, label);
+      const result = await runCase(evalCase, services, catalog, gate, label, retryLog);
       results.push(result);
       console.log(
         result.infra ? 'INFRA (provedor sobrecarregado)' : result.passed ? 'ok' : 'FALHOU',
@@ -360,6 +370,9 @@ async function main(): Promise<void> {
     );
     console.log(
       `Chamadas ao LLM por caso (média): ${summary.avgChatCalls.toFixed(1)} de chat, ${summary.avgEmbedCalls.toFixed(1)} de embeddings`,
+    );
+    console.log(
+      `Retries 429/503: ${summary.totalRetries} no total (${Math.round(summary.totalRetryWaitMs)} ms de backoff, dentro da latência)`,
     );
     console.log(
       `Latência por resposta (sem a pausa): p50 ${Math.round(summary.latencyP50Ms)} ms, p95 ${Math.round(summary.latencyP95Ms)} ms`,
