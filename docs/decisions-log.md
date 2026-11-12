@@ -156,3 +156,11 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
     - **Sem código de erro novo:** `LLM_TRUNCATED` faria o front antigo descartar o evento de erro.
   - **Resultado oficial do eval mantido em 18/20.**
   - Commits `4057c9a`, `957af71` e `f3c0a0d`, aprovados pelo reviewer.
+
+## Node 24 (2026-11-12)
+
+- **D7.1 · Projeto migrado para o Node 24.** Substitui a D2.20, que fixava o Node 20.19. Motivo: a Vercel não oferece mais o Node 20 (só 22, 24 e 26), e o deploy falhava pelo `engines.node` `>=20.19 <21`.
+  - **O que mudou:** `engines.node` passou para `>=24 <25` em todos os `package.json`, o `.nvmrc` para `24` e os dois Dockerfiles para `node:24-alpine` (continua musl). O CI herda a versão do `.nvmrc`.
+  - **O que não mudou:** nenhuma dependência trocou de major e o lockfile ficou intacto. Os pinos de `openai@^4`, do Scalar `1.0.31` e de `@types/node@20` foram mantidos de propósito. Liberá-los fica como pendência.
+  - **Validação com Node 24.22.3 e banco local:** lint, typecheck, 255 testes, 39 e2e, build, eval fake 13/20 e build das duas imagens. Commit `854a86b`, aprovado pelo reviewer.
+  - **Incidente na validação:** o `.env` da raiz tinha um segundo `DATABASE_URL` apontando para o Neon de produção, e a última definição vence. A primeira rodada de testes foi para o Neon e deu timeouts. Os mesmos timeouts aconteciam no Node 20, então não eram culpa da migração. Uma checagem só de leitura mostrou o Neon limpo. A validação foi refeita com o `DATABASE_URL` local forçado. Recomendação ao dono: tirar a URL do Neon do `.env` da raiz.
