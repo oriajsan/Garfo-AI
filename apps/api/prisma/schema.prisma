@@ -1,0 +1,119 @@
+// Garfo AI — data model (SPEC section 4).
+// Money is always stored in cents (Int). Extra SQL (HNSW index and the quantity CHECK)
+// lives in the initial migration because Prisma cannot express it in the schema.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector, pg_trgm]
+}
+
+enum DishCategory {
+  STARTER
+  MAIN
+  SNACK
+  PIZZA
+  DESSERT
+  DRINK
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+enum CartStatus {
+  OPEN
+  CHECKED_OUT
+}
+
+model Restaurant {
+  id                 String  @id @default(uuid())
+  slug               String  @unique
+  name               String
+  cuisine            String
+  description        String
+  emoji              String
+  rating             Float
+  deliveryFeeCents   Int
+  deliveryMinMinutes Int
+  deliveryMaxMinutes Int
+  minOrderCents      Int
+  isOpen             Boolean @default(true)
+  dishes             Dish[]
+}
+
+model Dish {
+  id            String                       @id @default(uuid())
+  restaurantId  String
+  restaurant    Restaurant                   @relation(fields: [restaurantId], references: [id])
+  name          String
+  description   String
+  priceCents    Int
+  category      DishCategory
+  dietaryTags   String[] // vegetarian, vegan, gluten_free, lactose_free, spicy, high_protein, light
+  allergens     String[] // gluten, lactose, peanut, nuts, shellfish, fish, egg, soy
+  calories      Int?
+  serves        Int                          @default(1)
+  available     Boolean                      @default(true)
+  embeddingText String // text used to generate the embedding
+  embeddingHash String? // sha256 of the embeddingText used for the last embedding
+  embedding     Unsupported("vector(1536)")?
+  cartItems     CartItem[]
+  // dish_embedding_hnsw (HNSW, vector_cosine_ops) is created in the initial migration.
+
+  @@index([restaurantId])
+  @@index([dietaryTags], map: "dish_tags_gin", type: Gin)
+  @@index([allergens], map: "dish_allergens_gin", type: Gin)
+}
+
+model Cart {
+  id           String     @id @default(uuid())
+  sessionId    String
+  restaurantId String?
+  status       CartStatus @default(OPEN)
+  items        CartItem[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([sessionId, status])
+}
+
+model CartItem {
+  id       String  @id @default(uuid())
+  cartId   String
+  cart     Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  dishId   String
+  dish     Dish    @relation(fields: [dishId], references: [id])
+  quantity Int // CHECK (quantity BETWEEN 1 AND 10) in the migration
+  notes    String?
+
+  @@unique([cartId, dishId])
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  sessionId String
+  messages  Message[]
+  createdAt DateTime  @default(now())
+
+  @@index([sessionId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        Json // text, tool_calls or tool_result, normalized across providers
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
