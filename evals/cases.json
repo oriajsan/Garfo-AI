@@ -418,7 +418,16 @@
       "cartNeverMixesRestaurants": true,
       "finalReplyMentions": {
         "allOf": [
-          ["restaurante"],
+          [
+            "restaurante",
+            "pizzaria",
+            "loja",
+            "lugar",
+            "casa",
+            "estabelecimento",
+            "kaizen",
+            "forno da vila"
+          ],
           [
             "outro",
             "outra",
@@ -461,7 +470,7 @@
       "cartNeverMixesRestaurants": true,
       "finalReplyMentions": {
         "allOf": [
-          ["restaurante"],
+          ["restaurante", "pizzaria", "loja", "lugar", "casa", "estabelecimento", "brasa", "cedro"],
           [
             "outro",
             "outra",

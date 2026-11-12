@@ -36,7 +36,7 @@ export interface Observation {
   cartItems: Array<{ dishName: string; quantity: number }>;
   /** Restaurant id of each cart item, captured after every user turn (one entry per turn). */
   cartRestaurantIdsPerTurn: string[][];
-  /** Text of the last assistant reply, with `[[dish:id]]` markers still in it. */
+  /** Text of every assistant message of the last turn, joined, with `[[dish:id]]` markers still in it. */
   finalReplyText: string;
   /** `[[dish:id]]` markers written by the model that no tool result of the conversation held. */
   hallucinatedIds: string[];

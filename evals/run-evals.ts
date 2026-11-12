@@ -161,16 +161,17 @@ async function runCase(
     const toolCalls: Observation['toolCalls'] = [];
     const seen = new Map<string, string>();
     const cited: string[] = [];
-    let finalReplyText = '';
+    let lastTurnTexts: string[] = [];
     for (const row of rows) {
       const content = row.content as Record<string, unknown>;
+      if (row.role === 'USER') lastTurnTexts = [];
       if (row.role === 'ASSISTANT') {
         const calls = Array.isArray(content.toolCalls) ? content.toolCalls : [];
         for (const call of calls as Array<{ name: string; argsJson: string }>) {
           toolCalls.push({ name: call.name, args: safeParse(call.argsJson) });
         }
         const text = typeof content.text === 'string' ? content.text : '';
-        finalReplyText = text;
+        if (text) lastTurnTexts.push(text);
         for (const match of text.matchAll(MARKER)) cited.push(match[1] ?? '');
       } else if (row.role === 'TOOL') {
         collectDishRefs(content.result, seen);
@@ -194,7 +195,7 @@ async function runCase(
       cartRestaurantIdsPerTurn: cartDishIdsPerTurn.map((ids) =>
         ids.map((id) => dishRestaurants.get(id) ?? `unknown:${id}`),
       ),
-      finalReplyText,
+      finalReplyText: lastTurnTexts.join('\n'),
       hallucinatedIds: [...new Set(cited.filter((id) => !seen.has(id)))],
       runErrors,
     };
