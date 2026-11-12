@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { type ChatEvent } from '@garfo/shared';
 import { CartService } from '../cart/cart.service';
 import { SearchService } from '../catalog/search.service';
+import { describeProviderError } from '../llm/http-diagnostics';
+import { LlmOverloadedError } from '../llm/llm.errors';
 import { LLM_PROVIDER } from '../llm/llm.tokens';
 import { type ChatMessage, type LlmProvider, type ToolCall } from '../llm/llm.types';
 import { buildSystemPrompt, summarizeCart } from '../prompts/system-prompt';
@@ -16,6 +18,8 @@ export const ITERATION_LIMIT_TEXT =
 export const EMPTY_ANSWER_TEXT = 'Desculpe, não consegui responder agora. Pode tentar de novo?';
 export const LLM_ERROR_TEXT =
   'Não consegui falar com o assistente agora. Tente novamente em instantes.';
+export const LLM_OVERLOADED_TEXT =
+  'O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.';
 export const PERSIST_ERROR_TEXT = 'Não consegui salvar a conversa. Tente novamente em instantes.';
 
 export interface AgentInput {
@@ -188,9 +192,14 @@ export class AgentService {
           event: 'chat_error',
           conversationId,
           message: error instanceof Error ? error.message : 'unknown',
+          ...describeProviderError(error instanceof LlmOverloadedError ? error.cause : error),
         }),
       );
-      emit({ type: 'error', data: { code: 'LLM_ERROR', message: LLM_ERROR_TEXT } });
+      if (error instanceof LlmOverloadedError) {
+        emit({ type: 'error', data: { code: 'LLM_OVERLOADED', message: LLM_OVERLOADED_TEXT } });
+      } else {
+        emit({ type: 'error', data: { code: 'LLM_ERROR', message: LLM_ERROR_TEXT } });
+      }
       return;
     }
 

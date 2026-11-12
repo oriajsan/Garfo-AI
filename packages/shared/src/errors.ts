@@ -16,6 +16,7 @@ export const ERROR_CODES = [
   'INTERNAL_ERROR',
   'CONVERSATION_NOT_FOUND',
   'LLM_ERROR',
+  'LLM_OVERLOADED',
   'TOOL_TIMEOUT',
 ] as const;
 export const errorCodeSchema = z.enum(ERROR_CODES);
@@ -37,6 +38,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   BUDGET_EXCEEDED: 429,
   INTERNAL_ERROR: 500,
   LLM_ERROR: 502,
+  LLM_OVERLOADED: 503,
   TOOL_TIMEOUT: 504,
 };
 

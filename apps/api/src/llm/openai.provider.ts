@@ -6,6 +6,7 @@ import {
   type LlmProvider,
   type LlmStreamChunk,
 } from './llm.types';
+import { withRetry, type RetryConfig } from './retry';
 import { adaptOpenAiStream, toOpenAiMessages, toOpenAiTools } from './openai.mapping';
 
 const TEMPERATURE = 0.3;
@@ -20,22 +21,28 @@ export class OpenAiLlmProvider implements LlmProvider {
     private readonly client: OpenAI,
     private readonly model: string,
     private readonly compatibleEndpoint = false,
+    private readonly retry: RetryConfig = {},
   ) {}
 
   async *chat(input: LlmChatInput): AsyncGenerator<LlmStreamChunk> {
-    const stream = await this.client.chat.completions.create(
-      {
-        model: this.model,
-        messages: toOpenAiMessages(input.system, input.messages),
-        ...(input.tools.length > 0 ? { tools: toOpenAiTools(input.tools) } : {}),
-        stream: true,
-        stream_options: { include_usage: true },
-        temperature: TEMPERATURE,
-        max_tokens: this.compatibleEndpoint
-          ? Math.max(input.maxTokens, COMPATIBLE_MIN_MAX_TOKENS)
-          : input.maxTokens,
-      },
-      { signal: input.signal },
+    // Only opening the stream is retried: once a chunk is out, a retry would repeat text.
+    const stream = await withRetry(
+      () =>
+        this.client.chat.completions.create(
+          {
+            model: this.model,
+            messages: toOpenAiMessages(input.system, input.messages),
+            ...(input.tools.length > 0 ? { tools: toOpenAiTools(input.tools) } : {}),
+            stream: true,
+            stream_options: { include_usage: true },
+            temperature: TEMPERATURE,
+            max_tokens: this.compatibleEndpoint
+              ? Math.max(input.maxTokens, COMPATIBLE_MIN_MAX_TOKENS)
+              : input.maxTokens,
+          },
+          { signal: input.signal },
+        ),
+      { ...this.retry, signal: input.signal, label: 'chat' },
     );
     yield* adaptOpenAiStream(stream);
   }
@@ -49,14 +56,19 @@ export class OpenAiEmbeddingProvider implements EmbeddingProvider {
   constructor(
     private readonly client: OpenAI,
     readonly modelId: string,
+    private readonly retry: RetryConfig = {},
   ) {}
 
   async embed(texts: string[]): Promise<number[][]> {
-    const response = await this.client.embeddings.create({
-      model: this.modelId,
-      input: texts,
-      dimensions: this.dimensions,
-    });
+    const response = await withRetry(
+      () =>
+        this.client.embeddings.create({
+          model: this.modelId,
+          input: texts,
+          dimensions: this.dimensions,
+        }),
+      { ...this.retry, label: 'embeddings' },
+    );
     if (response.data.length !== texts.length) {
       throw new Error(
         `Embedding model "${this.modelId}" returned ${response.data.length} vectors for ${texts.length} inputs. Check LLM_EMBEDDING_MODEL / OPENAI_BASE_URL.`,

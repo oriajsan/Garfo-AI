@@ -4,6 +4,7 @@ import { type CartService } from '../cart/cart.service';
 import { type SearchService } from '../catalog/search.service';
 import { DomainError } from '../common/domain-error';
 import { FakeLlmProvider, type FakeTurn } from '../llm/fake-llm.provider';
+import { LlmOverloadedError } from '../llm/llm.errors';
 import { type LlmChatInput, type LlmProvider, type LlmStreamChunk } from '../llm/llm.types';
 import { DISH_1, DISH_2, emptyCart, makeCart, makeDish, UNKNOWN_DISH } from '../testing/fixtures';
 import { ToolRegistry } from '../tools/tool.registry';
@@ -12,6 +13,7 @@ import {
   EMPTY_ANSWER_TEXT,
   ITERATION_LIMIT_TEXT,
   LLM_ERROR_TEXT,
+  LLM_OVERLOADED_TEXT,
   MAX_ITERATIONS,
 } from './agent.service';
 import { ConversationRepository, type MessageRecord } from './conversation.repository';
@@ -396,6 +398,51 @@ describe('AgentService', () => {
     });
     expect(JSON.stringify(s.events)).not.toContain('sk-secret');
     expect(s.conversations.saveRound).not.toHaveBeenCalled();
+  });
+
+  it('turns exhausted retries into an LLM_OVERLOADED event and persists nothing', async () => {
+    const provider: LlmProvider = {
+      chat: () => ({
+        [Symbol.asyncIterator]: () => ({
+          next: (): Promise<IteratorResult<LlmStreamChunk>> =>
+            Promise.reject(new LlmOverloadedError(503, 4)),
+        }),
+      }),
+    };
+    const s = setup(provider);
+    await s.run();
+
+    expect(s.events.at(-1)).toEqual({
+      type: 'error',
+      data: { code: 'LLM_OVERLOADED', message: LLM_OVERLOADED_TEXT },
+    });
+    expect(s.conversations.saveRound).not.toHaveBeenCalled();
+  });
+
+  it('logs status and body of a provider error in chat_error', async () => {
+    const logged: string[] = [];
+    const spy = jest.spyOn(Logger.prototype, 'error').mockImplementation((m: unknown) => {
+      logged.push(String(m));
+    });
+    const provider: LlmProvider = {
+      chat: () => ({
+        [Symbol.asyncIterator]: () => ({
+          next: (): Promise<IteratorResult<LlmStreamChunk>> =>
+            Promise.reject(
+              Object.assign(new Error('400 bad'), {
+                status: 400,
+                error: { error: { message: 'Function call is missing a thought_signature' } },
+              }),
+            ),
+        }),
+      }),
+    };
+    const s = setup(provider);
+    await s.run();
+    spy.mockRestore();
+    const entry = logged.find((m) => m.includes('chat_error')) ?? '';
+    expect(entry).toContain('"status":400');
+    expect(entry).toContain('thought_signature');
   });
 
   it('reports a persistence failure as an error instead of done', async () => {

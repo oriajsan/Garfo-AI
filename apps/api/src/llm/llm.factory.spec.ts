@@ -12,6 +12,11 @@ const clientOf = (provider: unknown): { baseURL: string } =>
   (provider as { client: { baseURL: string } }).client;
 
 describe('llm.factory baseURL', () => {
+  // The SDK itself falls back to this variable; keep the host environment out of the test.
+  beforeAll(() => {
+    delete process.env.OPENAI_BASE_URL;
+  });
+
   it('uses the OpenAI default without OPENAI_BASE_URL', () => {
     expect(clientOf(createLlmProvider(base)).baseURL).toBe('https://api.openai.com/v1');
     expect(clientOf(createEmbeddingProvider(base)).baseURL).toBe('https://api.openai.com/v1');
@@ -23,5 +28,17 @@ describe('llm.factory baseURL', () => {
     expect(clientOf(createEmbeddingProvider(env)).baseURL).toBe(
       'https://example.test/v1beta/openai/',
     );
+  });
+});
+
+describe('llm.factory client options', () => {
+  it('disables SDK retries and raises max_tokens only with OPENAI_BASE_URL', () => {
+    const client = (provider: unknown): { maxRetries: number } =>
+      (provider as { client: { maxRetries: number } }).client;
+    expect(client(createLlmProvider(base)).maxRetries).toBe(0);
+    expect(client(createEmbeddingProvider(base)).maxRetries).toBe(0);
+    const flag = (p: unknown): boolean => (p as { compatibleEndpoint: boolean }).compatibleEndpoint;
+    expect(flag(createLlmProvider(base))).toBe(false);
+    expect(flag(createLlmProvider({ ...base, OPENAI_BASE_URL: 'https://e.test/v1/' }))).toBe(true);
   });
 });
