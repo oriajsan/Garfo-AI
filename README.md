@@ -147,6 +147,10 @@ pnpm eval            # TEM CUSTO: chama a API da OpenAI
 
 Para respeitar o limite de requisições por minuto do plano gratuito do Gemini, o eval roda os casos em sequência e espera pelo menos `EVAL_DELAY_MS` (padrão 2000 ms) entre o início de chamadas consecutivas ao provedor, contando chat e embeddings. A pausa vale só com `LLM_PROVIDER=openai` (com `fake` é 0) e a execução imprime a pausa efetiva no início. Se aparecerem muitos 429, aumente o valor, por exemplo `EVAL_DELAY_MS=5000`.
 
+A latência reportada desconta o tempo que essa pausa fez a resposta esperar. O relatório também mostra as chamadas de chat e de embeddings por caso (com a média) e, para cada caso que falhou, a resposta final do assistente.
+
+Para rodar só alguns casos, use `EVAL_ONLY` com ids do `evals/cases.json` separados por vírgula (id desconhecido dá erro antes de qualquer chamada), por exemplo `EVAL_ONLY=simple-spicy-40 pnpm eval`. Nesse modo o relatório vai para `evals/results/partial-latest.md`, com aviso de execução parcial, e nunca sobrescreve o `latest.md`. `EVAL_REPEAT=N` (padrão 1, só com `EVAL_ONLY`) repete cada caso N vezes, cada repetição como uma linha própria (`id#1`, `id#2`...).
+
 O custo estimado usa `EVAL_PRICE_INPUT_USD_PER_MTOK` e `EVAL_PRICE_OUTPUT_USD_PER_MTOK` (padrões para um modelo pequeno, em `.env.example`). O workflow manual `.github/workflows/eval.yml` faz o mesmo no GitHub Actions. Para publicar o deploy, siga [`docs/deploy.md`](docs/deploy.md).
 
 ## Estrutura de pastas
