@@ -290,6 +290,30 @@ describe('ToolRegistry', () => {
     expect(search.properties.dietary_tags?.items?.enum).toContain('vegetarian');
   });
 
+  it('emits plain draft-7 schemas with no $schema, $ref, definitions or boolean exclusive bounds', () => {
+    const walk = (node: unknown, path: string): void => {
+      if (Array.isArray(node)) {
+        node.forEach((item, i) => walk(item, `${path}[${i}]`));
+        return;
+      }
+      if (node === null || typeof node !== 'object') return;
+      for (const [key, value] of Object.entries(node)) {
+        const where = `${path}.${key}`;
+        expect(['$schema', '$ref', 'definitions']).not.toContain(key);
+        if (key === 'exclusiveMinimum' || key === 'exclusiveMaximum') {
+          expect(typeof value).toBe('number');
+        }
+        walk(value, where);
+      }
+    };
+    const definitions = stubs().registry().definitions();
+    expect(definitions).toHaveLength(7);
+    for (const definition of definitions) {
+      expect(definition.parameters.type).toBe('object');
+      walk(definition.parameters, definition.name);
+    }
+  });
+
   it('turns invalid or malformed arguments into a VALIDATION_ERROR result', async () => {
     const { search, registry } = stubs();
     for (const argsJson of ['{not json', '{"limit":99}', '[]', '"x"']) {

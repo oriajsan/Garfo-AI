@@ -66,7 +66,7 @@ export class ToolRegistry {
   definitions(): ToolDefinition[] {
     return [...this.tools.values()].map((tool) => {
       const schema = zodToJsonSchema(tool.schema as never, {
-        target: 'openApi3',
+        target: 'jsonSchema7',
         $refStrategy: 'none',
       });
       const { $schema: _ignored, ...parameters } = schema as Record<string, unknown>;
