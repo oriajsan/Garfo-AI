@@ -6,6 +6,9 @@ const MESSAGES: Partial<Record<ErrorCode, string>> = {
     'Calma, você enviou mensagens rápido demais. Espere cerca de um minuto e tente de novo.',
   BUDGET_EXCEEDED:
     'A demo atingiu o limite de mensagens de hoje para controlar custos. Volte amanhã; o carrinho continua funcionando.',
+  LLM_OVERLOADED:
+    'O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.',
+  LLM_TIMEOUT: 'O serviço de IA demorou demais para responder. Tente novamente.',
   LLM_ERROR: 'O assistente teve um problema para responder. Tente novamente em instantes.',
 };
 

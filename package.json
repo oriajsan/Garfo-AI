@@ -17,12 +17,14 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm -r --if-present test:e2e",
+    "eval": "node scripts/with-env.mjs pnpm --filter @garfo/evals eval",
     "format": "prettier --write .",
     "db:migrate": "node scripts/with-env.mjs pnpm --filter @garfo/api db:migrate",
     "db:migrate:dev": "node scripts/with-env.mjs pnpm --filter @garfo/api db:migrate:dev",
     "db:seed": "node scripts/with-env.mjs pnpm --filter @garfo/api db:seed",
     "db:setup": "pnpm db:migrate && pnpm db:seed && pnpm db:embed",
-    "db:embed": "node scripts/with-env.mjs pnpm --filter @garfo/api db:embed"
+    "db:embed": "node scripts/with-env.mjs pnpm --filter @garfo/api db:embed",
+    "llm:smoke": "node scripts/with-env.mjs pnpm --filter @garfo/api llm:smoke"
   },
   "devDependencies": {
     "@types/node": "^20",

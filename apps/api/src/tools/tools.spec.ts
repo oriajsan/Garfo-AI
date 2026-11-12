@@ -8,6 +8,7 @@ import { createGetDishTool, getDishSchema } from './get-dish.tool';
 import { createGetRestaurantTool, getRestaurantSchema } from './get-restaurant.tool';
 import { createSearchDishesTool, searchDishesSchema } from './search-dishes.tool';
 import { collectDishRefs, formatReaisCompact, shortDescription } from './tool.format';
+import { toOpenAiTools } from '../llm/openai.mapping';
 import { ToolRegistry } from './tool.registry';
 import { createUpdateCartItemTool, updateCartItemSchema } from './update-cart-item.tool';
 import { createViewCartTool, viewCartSchema } from './view-cart.tool';
@@ -311,6 +312,42 @@ describe('ToolRegistry', () => {
     for (const definition of definitions) {
       expect(definition.parameters.type).toBe('object');
       walk(definition.parameters, definition.name);
+    }
+  });
+
+  it('sends only portable schema keys for all 7 tools after sanitization', () => {
+    const allowed = new Set([
+      'type',
+      'properties',
+      'required',
+      'items',
+      'enum',
+      'description',
+      'minimum',
+      'maximum',
+      'minItems',
+      'maxItems',
+      'minLength',
+      'maxLength',
+      'anyOf',
+      'nullable',
+    ]);
+    const walkSchema = (schema: Record<string, unknown>): void => {
+      for (const [key, value] of Object.entries(schema)) {
+        expect(allowed).toContain(key);
+        if (key === 'properties') {
+          Object.values(value as Record<string, Record<string, unknown>>).forEach(walkSchema);
+        } else if (key === 'items') {
+          walkSchema(value as Record<string, unknown>);
+        } else if (key === 'anyOf') {
+          (value as Record<string, unknown>[]).forEach(walkSchema);
+        }
+      }
+    };
+    const tools = toOpenAiTools(stubs().registry().definitions());
+    expect(tools).toHaveLength(7);
+    for (const tool of tools) {
+      if (tool.type === 'function') walkSchema(tool.function.parameters ?? {});
     }
   });
 

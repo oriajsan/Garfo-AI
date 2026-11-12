@@ -1,0 +1,79 @@
+name: Eval
+
+# Manual only: this workflow calls the real OpenAI API and costs money (SPEC section 9).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    name: Agent evaluation (real LLM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: garfo
+          POSTGRES_PASSWORD: garfo
+          POSTGRES_DB: garfo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U garfo -d garfo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://garfo:garfo@localhost:5432/garfo
+      LLM_PROVIDER: openai
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Optional: an OpenAI-compatible endpoint (e.g. Gemini). Empty = OpenAI default.
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+      # Model names come from repository variables (Settings > Variables), not from code.
+      LLM_CHAT_MODEL: ${{ vars.LLM_CHAT_MODEL }}
+      LLM_EMBEDDING_MODEL: ${{ vars.LLM_EMBEDDING_MODEL || 'text-embedding-3-small' }}
+      # Optional (empty = defaults): see ADR 006.
+      LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
+      LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
+      EMBEDDING_DIMENSIONS: '1536'
+      CORS_ORIGIN: http://localhost:3000
+      EVAL_PRICE_INPUT_USD_PER_MTOK: ${{ vars.EVAL_PRICE_INPUT_USD_PER_MTOK }}
+      EVAL_PRICE_OUTPUT_USD_PER_MTOK: ${{ vars.EVAL_PRICE_OUTPUT_USD_PER_MTOK }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+
+      - name: Seed database
+        run: pnpm db:seed
+
+      # Real embeddings: the catalog search needs the same model the agent will use.
+      - name: Embed dishes (real provider)
+        run: pnpm db:embed
+
+      - name: Run the evaluation
+        run: pnpm eval
+
+      - name: Upload the result
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-latest
+          path: evals/results/latest.md
+          if-no-files-found: error

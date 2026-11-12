@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { type ChatEvent } from '@garfo/shared';
 import { CartService } from '../cart/cart.service';
 import { SearchService } from '../catalog/search.service';
+import { describeProviderError } from '../llm/http-diagnostics';
+import { LlmOverloadedError, LlmTimeoutError } from '../llm/llm.errors';
 import { LLM_PROVIDER } from '../llm/llm.tokens';
 import { type ChatMessage, type LlmProvider, type ToolCall } from '../llm/llm.types';
 import { buildSystemPrompt, summarizeCart } from '../prompts/system-prompt';
@@ -16,6 +18,9 @@ export const ITERATION_LIMIT_TEXT =
 export const EMPTY_ANSWER_TEXT = 'Desculpe, não consegui responder agora. Pode tentar de novo?';
 export const LLM_ERROR_TEXT =
   'Não consegui falar com o assistente agora. Tente novamente em instantes.';
+export const LLM_OVERLOADED_TEXT =
+  'O serviço de IA está sobrecarregado no momento. Tente novamente em alguns instantes.';
+export const LLM_TIMEOUT_TEXT = 'O serviço de IA demorou demais para responder. Tente novamente.';
 export const PERSIST_ERROR_TEXT = 'Não consegui salvar a conversa. Tente novamente em instantes.';
 
 export interface AgentInput {
@@ -93,7 +98,12 @@ export class AgentService {
             const safe = parser.push(chunk.delta);
             if (safe) emit({ type: 'token', data: { text: safe } });
           } else if (chunk.type === 'tool_call') {
-            toolCalls.push({ id: chunk.id, name: chunk.name, argsJson: chunk.argsJson });
+            toolCalls.push({
+              id: chunk.id,
+              name: chunk.name,
+              argsJson: chunk.argsJson,
+              ...(chunk.extraContent !== undefined ? { extraContent: chunk.extraContent } : {}),
+            });
           } else {
             usage.inputTokens += chunk.usage.inputTokens;
             usage.outputTokens += chunk.usage.outputTokens;
@@ -183,9 +193,16 @@ export class AgentService {
           event: 'chat_error',
           conversationId,
           message: error instanceof Error ? error.message : 'unknown',
+          ...describeProviderError(error instanceof LlmOverloadedError ? error.cause : error),
         }),
       );
-      emit({ type: 'error', data: { code: 'LLM_ERROR', message: LLM_ERROR_TEXT } });
+      if (error instanceof LlmOverloadedError) {
+        emit({ type: 'error', data: { code: 'LLM_OVERLOADED', message: LLM_OVERLOADED_TEXT } });
+      } else if (error instanceof LlmTimeoutError) {
+        emit({ type: 'error', data: { code: 'LLM_TIMEOUT', message: LLM_TIMEOUT_TEXT } });
+      } else {
+        emit({ type: 'error', data: { code: 'LLM_ERROR', message: LLM_ERROR_TEXT } });
+      }
       return;
     }
 

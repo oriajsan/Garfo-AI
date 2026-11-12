@@ -108,3 +108,15 @@ Escolhas de ferramental do bloco:
 - **`output: 'standalone'` com `experimental.outputFileTracingRoot` na raiz do repositório:** num monorepo pnpm, o rastreamento de arquivos do Next precisa partir da raiz para copiar o `packages/shared` e os pacotes do store do pnpm; o servidor fica em `apps/web/server.js` dentro da imagem.
 - **Seed e `db:embed` compilados para JS na imagem da API** (`tsconfig.bootstrap.json`, saída em `dist-bootstrap/`), em vez de levar o `tsx` para produção. O caminho do JSON do seed vem de `SEED_PATH` na imagem.
 - **Ícones de marca:** o `lucide-react` atual não traz o logo do GitHub; foi usado um SVG inline em vez de uma dependência extra.
+
+### Bloco 5: avaliação e documentação
+
+Nenhuma dependência nova de fora do repositório. O workspace `evals/` virou um pacote (`@garfo/evals`, listado em `pnpm-workspace.yaml`) que **reaproveita** pacotes já instalados:
+
+| Pacote                                  | Onde                       | Motivo                                                                                                                                                                                                                                      |
+| --------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@nestjs/core`, `@nestjs/common`, `zod` | evals (produção do pacote) | Subir o contexto Nest sem HTTP (`NestFactory.createApplicationContext`) e validar `cases.json`. Mesmas versões da API.                                                                                                                      |
+| `jest`, `ts-jest`, `@types/jest`        | evals (dev)                | Testes do próprio harness (checagens, relatório, schema dos casos), sem LLM e sem banco.                                                                                                                                                    |
+| `ts-node`                               | evals (dev)                | Executa `run-evals.ts`. O `tsx` não serve aqui: ele usa esbuild, que **não emite `emitDecoratorMetadata`**, e sem esses metadados a injeção de dependência do Nest não funciona. O `ts-node` compila com o `tsc` e preserva os decoradores. |
+
+Um pacote próprio (em vez de um script solto em `evals/`) existe por causa do pnpm estrito: um arquivo na raiz só enxerga as dependências da raiz. O `pnpm eval` da raiz repassa o `.env` pelo `scripts/with-env.mjs` e chama o script do pacote.

@@ -1,9 +1,17 @@
+import { randomUUID } from 'node:crypto';
 import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall,
   ChatCompletionTool,
 } from 'openai/resources/chat/completions';
-import { type ChatMessage, type LlmStreamChunk, type ToolDefinition } from './llm.types';
+import { sanitizeJsonSchema } from './schema-sanitizer';
+import {
+  type ChatMessage,
+  type JsonValue,
+  type LlmStreamChunk,
+  type ToolDefinition,
+} from './llm.types';
 
 /** Internal `ChatMessage[]` -> OpenAI messages, with the system prompt first. */
 export function toOpenAiMessages(
@@ -23,10 +31,14 @@ export function toOpenAiMessages(
           content: message.content === '' && message.toolCalls?.length ? null : message.content,
           ...(message.toolCalls?.length
             ? {
-                tool_calls: message.toolCalls.map((call) => ({
+                tool_calls: message.toolCalls.map((call): ChatCompletionMessageToolCall => ({
                   id: call.id,
                   type: 'function' as const,
                   function: { name: call.name, arguments: call.argsJson },
+                  // Only present on providers that send it (Gemini); OpenAI payload is unchanged.
+                  ...(call.extraContent !== undefined
+                    ? ({ extra_content: call.extraContent } as object)
+                    : {}),
                 })),
               }
             : {}),
@@ -47,7 +59,11 @@ export function toOpenAiMessages(
 export function toOpenAiTools(tools: ToolDefinition[]): ChatCompletionTool[] {
   return tools.map((tool) => ({
     type: 'function' as const,
-    function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: sanitizeJsonSchema(tool.parameters),
+    },
   }));
 }
 
@@ -55,17 +71,41 @@ export function toOpenAiTools(tools: ToolDefinition[]): ChatCompletionTool[] {
  * Tool calls arrive split across many deltas, identified by `index`: the first delta carries
  * id and name, the following ones carry slices of the JSON arguments. This joins them.
  */
-export class ToolCallAggregator {
-  private readonly calls = new Map<number, { id: string; name: string; args: string }>();
+/** `index` is required by the OpenAI types but missing from some compatible endpoints. */
+type ToolCallDelta = Omit<ChatCompletionChunk.Choice.Delta.ToolCall, 'index'> & {
+  index?: number;
+  /** Gemini's thought signature: `{ google: { thought_signature } }`. Opaque to us. */
+  extra_content?: JsonValue;
+};
 
-  add(deltas: ChatCompletionChunk.Choice.Delta.ToolCall[]): void {
+export class ToolCallAggregator {
+  private readonly calls = new Map<
+    number,
+    { id: string; name: string; args: string; extra?: JsonValue }
+  >();
+
+  add(deltas: ToolCallDelta[]): void {
     for (const delta of deltas) {
-      const current = this.calls.get(delta.index) ?? { id: '', name: '', args: '' };
+      const index = this.resolveIndex(delta);
+      const current = this.calls.get(index) ?? { id: '', name: '', args: '' };
       if (delta.id) current.id = delta.id;
       if (delta.function?.name) current.name += delta.function.name;
       if (delta.function?.arguments) current.args += delta.function.arguments;
-      this.calls.set(delta.index, current);
+      if (delta.extra_content !== undefined && delta.extra_content !== null) {
+        current.extra = delta.extra_content;
+      }
+      this.calls.set(index, current);
     }
+  }
+
+  /**
+   * Some compatible endpoints (Gemini) omit `index`. A delta carrying an id or name then starts a
+   * new call; one without continues the latest call.
+   */
+  private resolveIndex(delta: ToolCallDelta): number {
+    if (typeof delta.index === 'number') return delta.index;
+    if (delta.id || delta.function?.name || this.calls.size === 0) return this.calls.size;
+    return this.calls.size - 1;
   }
 
   /** Complete calls ordered by index; an empty argument string becomes `{}`. */
@@ -74,9 +114,11 @@ export class ToolCallAggregator {
       .sort(([a], [b]) => a - b)
       .map(([, call]) => ({
         type: 'tool_call' as const,
-        id: call.id,
+        // Unique across loop iterations so ids never collide in the history.
+        id: call.id || `call_${randomUUID()}`,
         name: call.name,
         argsJson: call.args === '' ? '{}' : call.args,
+        ...(call.extra !== undefined ? { extraContent: call.extra } : {}),
       }));
   }
 }
@@ -91,8 +133,8 @@ export async function* adaptOpenAiStream(
 
   for await (const chunk of stream) {
     if (chunk.usage) {
-      inputTokens = chunk.usage.prompt_tokens;
-      outputTokens = chunk.usage.completion_tokens;
+      inputTokens = chunk.usage.prompt_tokens ?? 0;
+      outputTokens = chunk.usage.completion_tokens ?? 0;
     }
     const delta = chunk.choices[0]?.delta;
     if (!delta) continue;

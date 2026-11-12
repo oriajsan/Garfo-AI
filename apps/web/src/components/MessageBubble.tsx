@@ -23,7 +23,17 @@ function TypingDots() {
   );
 }
 
-export function MessageBubble({ message, streaming }: { message: UiMessage; streaming: boolean }) {
+export const SLOW_NOTICE = 'O assistente está mais lento que o normal, aguarde…';
+
+export function MessageBubble({
+  message,
+  streaming,
+  slow = false,
+}: {
+  message: UiMessage;
+  streaming: boolean;
+  slow?: boolean;
+}) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -45,7 +55,7 @@ export function MessageBubble({ message, streaming }: { message: UiMessage; stre
         <UtensilsCrossed className="h-3.5 w-3.5" />
       </span>
       <div className="min-w-0 max-w-[92%] flex-1 space-y-3">
-        {(message.tools.length > 0 || message.text || waiting) && (
+        {(message.tools.length > 0 || message.text || waiting || slow) && (
           <div
             className={clsx(
               'inline-block max-w-full rounded-2xl rounded-tl-md border border-stone-200 bg-white px-4 py-2.5 shadow-sm',
@@ -59,6 +69,12 @@ export function MessageBubble({ message, streaming }: { message: UiMessage; stre
               </div>
             )}
             {waiting && !runningTool && <TypingDots />}
+            {/* The live region stays mounted while streaming so the notice is announced. */}
+            {streaming && (
+              <div aria-live="polite" className="text-xs text-stone-600 dark:text-stone-400">
+                {slow && <p className="mt-1">{SLOW_NOTICE}</p>}
+              </div>
+            )}
           </div>
         )}
         {message.dishCards.length > 0 && (

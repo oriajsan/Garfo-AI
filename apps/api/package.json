@@ -20,7 +20,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "test": "jest --coverage",
     "test:e2e": "jest --config test/jest-e2e.config.ts --runInBand",
-    "db:embed": "tsx scripts/embed-dishes.ts"
+    "db:embed": "tsx scripts/embed-dishes.ts",
+    "llm:smoke": "tsx scripts/llm-smoke.ts"
   },
   "dependencies": {
     "@garfo/shared": "workspace:^",

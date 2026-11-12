@@ -23,6 +23,7 @@ export function ChatWindow() {
   const status = useChatStore((s) => s.status);
   const error = useChatStore((s) => s.error);
   const hydrated = useChatStore((s) => s.hydrated);
+  const slow = useChatStore((s) => s.slow);
   const send = useChatStore((s) => s.send);
   const stop = useChatStore((s) => s.stop);
   const dismissError = useChatStore((s) => s.dismissError);
@@ -113,6 +114,7 @@ export function ChatWindow() {
                   <MessageBubble
                     message={message}
                     streaming={streaming && index === messages.length - 1}
+                    slow={slow && streaming && index === messages.length - 1}
                   />
                 </div>
               ))}

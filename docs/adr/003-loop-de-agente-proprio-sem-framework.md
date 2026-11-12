@@ -51,3 +51,10 @@ Regras que o loop garante, todas com teste:
 - **Positivas:** ~200 linhas que o dono do projeto consegue explicar linha a linha; testes do loop com um `FakeLlmProvider` roteirizado, sem rede e sem chave; trocar OpenAI por outro provedor é escrever um adapter; guardrails (marcadores, ids válidos, limite, abort) ficam explícitos no código.
 - **Negativas:** somos responsáveis por detalhes que um framework esconderia: formato das mensagens de tool de cada provedor, reconstrução de argumentos que chegam em pedaços no streaming (isso fica no adapter da OpenAI), limites de histórico. Cada um tem teste.
 - **Para explicar em entrevista:** "um agente é um laço: chama o modelo, executa as tools que ele pediu, devolve os resultados e chama de novo, com um número máximo de voltas. O resto é engenharia em volta disso: validar o que o modelo pede, não confiar no que ele diz (ids de pratos), limitar custo e tempo, e nunca deixar o modelo executar ações irreversíveis."
+
+## Atualização (blocos 3 e 5): detalhes que mudaram o comportamento
+
+- **Modo demonstração (D3.9).** Sem chave, o `FakeLlmProvider` consulta uma política determinística de expressões regulares (`llm/demo-policy.ts`): extrai filtros da frase, chama `search_dishes` e `add_to_cart` e responde com um aviso na interface. Serve para a demo do `docker compose up` e **não mede** o LLM; limitações aceitas: não recusa assuntos fora de comida e não entende pedidos compostos.
+- **Cards só de pratos vistos (D3.2, D3.3).** Os ids válidos vêm de todos os resultados de tool da conversa, e o backend não trunca em 3 cards: a regra é do prompt, e truncar esconderia uma falha que a avaliação precisa enxergar (`maxRecommendations`).
+- **Erro do provedor (D3.4).** Vira evento `error` e a rodada não é persistida.
+- **A avaliação reusa o loop sem alterá-lo.** O `pnpm eval` chama `AgentService.run` direto e descobre os argumentos das tools lendo as mensagens `ASSISTANT` persistidas (`toolCalls[].argsJson`), sem gancho novo no código de produção.
