@@ -104,6 +104,12 @@ Arquivos de configuração já prontos no repositório:
 
    Defina também um limite mensal de gasto no painel da OpenAI (ex.: US$ 10).
 
+> **Dockerfile sem cache mounts.** O Railway exige que o id de um `--mount=type=cache` comece com o prefixo
+> `s/<service-id>-`; sem ele o build falha com `dockerfile invalid: ... is missing the cacheKey prefix from its id`.
+> Decisão: removemos os mounts do `apps/api/Dockerfile` para ele funcionar igual no Railway e no Docker local, sem
+> amarrar um ID de serviço. Consequência: o build local fica um pouco mais lento, porque não reaproveita o store do
+> pnpm entre builds, mas as camadas do Docker continuam fazendo cache enquanto o lockfile não mudar.
+
 Se preferir que o Railway prepare o banco sozinho, use `DB_BOOTSTRAP_ON_START=true`: a cada start rodam migrate, seed e
 embed (idempotentes, sem custo extra depois da primeira vez).
 

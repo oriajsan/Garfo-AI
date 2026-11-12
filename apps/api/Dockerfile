@@ -8,19 +8,18 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 WORKDIR /repo
 
-# 1) deps: download every package into the pnpm store using only the lockfile (cache-friendly).
+# 1) deps: download every package into the pnpm store using only the lockfile (layer-cache friendly).
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --frozen-lockfile
+RUN pnpm fetch --frozen-lockfile
 
 # 2) build: install offline, build shared + api, then produce a pruned production bundle.
 FROM deps AS build
 COPY . .
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline
+RUN pnpm install --frozen-lockfile --offline
 RUN pnpm --filter "@garfo/api..." build \
     && pnpm --filter @garfo/api build:bootstrap
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm --filter @garfo/api deploy --prod /out \
+RUN pnpm --filter @garfo/api deploy --prod /out \
     && cd /out && node_modules/.bin/prisma generate
 
 # 3) runtime: only production files, non-root user.
