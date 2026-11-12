@@ -28,7 +28,7 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
   - **Tool `search_dishes`:** a descrição de `dietary_tags` diz que o campo cobre restrições **e** características do prato, com o mapeamento (picante/apimentado=spicy, proteico=high_protein, leve=light, vegetariano=vegetarian, vegano=vegan, sem glúten=gluten_free, sem lactose=lactose_free). Também diz para usar a tag, e não só a `query`.
   - **Eval:** os casos de conflito passam se a resposta citar os dois restaurantes envolvidos **ou** usar termos genéricos de conflito por radical (`esvazi`, `troc`, `outr`...). O carrinho continua sem poder misturar restaurantes.
   - **Medição:** a latência é medida sem a pausa do eval, e o relatório passa a mostrar as chamadas ao LLM e os retries 429/503 por caso.
-- **Resultado:** **19/20 (95%)**, antes 18/20. Esse é o resultado oficial. 0 erros de infraestrutura, 0 retries 429/503. Tokens médios por caso: 6 622 de entrada e 226 de saída. Chamadas por caso: 2,8 de chat e 0,8 de embeddings (de 1 nos casos fora do escopo a 7 em `cart-change-quantity`).
+- **Resultado:** **19/20 (95%)**, antes 18/20. Esse é o resultado oficial. 0 erros de infraestrutura. Tokens médios por caso: 6 622 de entrada e 226 de saída. Chamadas por caso: 2,8 de chat e 0,8 de embeddings (de 1 nos casos fora do escopo a 7 em `cart-change-quantity`).
 - **Casos que mudaram de falha para acerto:**
   - `simple-spicy-40`: agora usa `dietary_tags: ["spicy"]`.
   - `conflict-burger-then-hummus`: passou pelo critério novo.
@@ -37,7 +37,7 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
   - O agente só grava o turno inteiro no fim. Como o turno foi abortado, o eval não viu nenhuma tool call e reportou também `mustCall:search_dishes: not called`. A causa única é o timeout.
   - O caso passou na v1, e a descrição de tool alterada na v2 não toca em alergênicos.
   - **Não foi reclassificado como infraestrutura:** a regra da D6.9 só exclui 429/503, e o número oficial continua 19/20.
-- **Latência:** p50 de 21 s e p95 de 58 s sem a pausa. Ela variou de 3 s a 73 s em casos idênticos de 2 chamadas, sem nenhum 429/503. Isso indica enfileiramento no plano gratuito, não custo do agente.
+- **Latência:** p50 de 21 s e p95 de 58 s sem a pausa. Ela variou de 3 s a 73 s em casos idênticos de 2 chamadas, sem nenhum 429/503. Isso indica enfileiramento no plano gratuito, não custo do agente. (O relatório da v2 dizia "0 retries 429/503", mas esse contador não funcionava; ver a nota na v3. A classificação de infraestrutura, que usa os códigos de erro, não foi afetada.)
   - Medição isolada antes da v3 (`EVAL_ONLY=simple-vegetarian-40 EVAL_REPEAT=5`): 5/5, 2 chamadas de chat por execução, latência de 2,4 s a 21,2 s, p50 5,8 s, p95 21,2 s.
 - **Lição:**
   - Descrever as características do prato como tags resolveu o caso picante.
@@ -48,12 +48,12 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
 
 - **O que mudou:** `reasoning_effort=minimal` no Gemini; timeout de 15 s até o **primeiro chunk** de cada chamada de chat, com uma repetição no `gemini-3.1-flash-lite` (`LLM_FALLBACK_MODEL`); aviso de lentidão no front. Prompt e tools iguais aos da v2.
 - **Escopo do timeout:** ele vale **só para o primeiro chunk** (abertura do stream mais o primeiro token). Depois que a resposta começa a chegar, nada é cortado nem refeito, para não duplicar texto. Uma resposta que começa rápido e demora para terminar não é afetada.
-- **Resultado:** **19/20 (95%)**, igual à v2. 0 erros de infraestrutura, 0 retries 429/503. Tokens médios por caso: 6 652 de entrada e 224 de saída. Chamadas por caso: 2,8 de chat e 0,9 de embeddings.
+- **Resultado:** **19/20 (95%)**, igual à v2. 0 erros de infraestrutura. Tokens médios por caso: 6 652 de entrada e 224 de saída. Chamadas por caso: 2,8 de chat e 0,9 de embeddings.
 - **Casos que mudaram de falha para acerto:** `diet-egg-allergy` (timeout do provedor na v2).
 - **Casos que regrediram:** `simple-dessert-15`, com `LLM_TIMEOUT` no modelo principal **e** no fallback. É uma falha do provedor, mas conta como falha do agente (D6.15). O relatório também acusou `search_dishes not called`. O caso fez 1 embedding, então a busca provavelmente rodou antes do timeout. É o mesmo efeito da persistência só no fim do turno visto na v2, corrigido para a execução final com o rastro parcial de tools.
 - **Latência:** **o p50 caiu de 21,3 s (v2) para 8,2 s e o p95 de 57,5 s para 31,9 s.** A melhora é atribuída ao timeout com fallback: chamadas que ficariam presas na fila do plano gratuito passam a ser cortadas em 15 s e repetidas em outro modelo.
   - **Ressalvas:**
-    - Os contadores de timeout e fallback da v3 marcaram 0, mas o log mostrou fallback em uso. Os contadores não contavam turnos que falharam (corrigido para a execução final), então não sabemos quantas chamadas o fallback salvou.
+    - Os contadores de retries, timeouts e fallbacks da v2 e da v3 marcaram 0, mas o log mostrou fallback em uso. Causa: o `Test.createTestingModule(...).compile()` do eval troca o logger global por um que descarta avisos, e o observador nunca recebeu nenhum evento. Corrigido para a execução final (`8c8d228`). Não sabemos quantas chamadas o fallback salvou na v3, nem se houve retries na v2 e na v3.
     - A fila do provedor varia com o horário.
     - A medição isolada do `reasoning_effort` não mostrou efeito, o que reforça a atribuição ao timeout com fallback, mas não a prova.
 - **Lição:**
