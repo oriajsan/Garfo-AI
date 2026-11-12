@@ -130,7 +130,7 @@ const CATEGORY_PATTERNS: Array<[DishCategory, RegExp]> = [
 ];
 
 const PRICE_PATTERNS = [
-  /(?:ate|menos de|abaixo de|no maximo|maximo de)\s*(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)(?!\s*(?:min|h\b|hora))/,
+  /(?:ate|menos de|abaixo de|no maximo|maximo de)\s*(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)\b(?!\s*(?:min|h\b|hora))/,
   /r\$\s*(\d+(?:[.,]\d{1,2})?)/,
   /(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real)\b/,
 ];
