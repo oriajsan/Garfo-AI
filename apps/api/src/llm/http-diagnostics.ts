@@ -17,7 +17,8 @@ export function truncate(text: string, max = MAX_LOGGED_BODY_CHARS): string {
 
 /**
  * Fetch for the OpenAI client that logs status and body of every non-2xx response and returns
- * the response (error bodies normalised for the SDK, see below). Never logs headers (they carry the API key) or the query string.
+ * the response (error bodies normalised for the SDK, see below). Never logs headers (they carry
+ * the API key) or the query string.
  */
 export function createDiagnosticFetch(
   logger: DiagnosticLogger = new Logger('LlmHttp'),

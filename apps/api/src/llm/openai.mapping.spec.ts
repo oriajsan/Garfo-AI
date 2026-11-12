@@ -287,4 +287,61 @@ describe('Gemini thought signatures (extra_content)', () => {
       '{"role":"assistant","content":null,"tool_calls":[{"id":"c1","type":"function","function":{"name":"search_dishes","arguments":"{\\"a\\":1}"}}]}',
     );
   });
+
+  const asDelta = (value: unknown): ChatCompletionChunk.Choice.Delta =>
+    value as ChatCompletionChunk.Choice.Delta;
+  const toolCalls = (chunks: LlmStreamChunk[]) => chunks.filter((c) => c.type === 'tool_call');
+
+  it('captures extra_content that only arrives in a later delta of the same call', async () => {
+    const out = await collect([
+      chunk(
+        asDelta({
+          tool_calls: [{ index: 0, id: 'c1', function: { name: 'search_dishes', arguments: '{' } }],
+        }),
+      ),
+      chunk(
+        asDelta({
+          tool_calls: [{ index: 0, function: { arguments: '}' }, extra_content: signature }],
+        }),
+      ),
+    ]);
+    expect(toolCalls(out)).toEqual([
+      expect.objectContaining({ id: 'c1', argsJson: '{}', extraContent: signature }),
+    ]);
+  });
+
+  it('keeps the signature on the second parallel call only', async () => {
+    const out = await collect([
+      chunk(
+        asDelta({
+          tool_calls: [
+            { index: 0, id: 'c1', function: { name: 'view_cart', arguments: '{}' } },
+            {
+              index: 1,
+              id: 'c2',
+              function: { name: 'search_dishes', arguments: '{}' },
+              extra_content: signature,
+            },
+          ],
+        }),
+      ),
+    ]);
+    const [a, b] = toolCalls(out);
+    expect(a).not.toHaveProperty('extraContent');
+    expect(b).toMatchObject({ id: 'c2', extraContent: signature });
+  });
+
+  it('attaches extra_content from a continuation delta without index', async () => {
+    const out = await collect([
+      chunk(
+        asDelta({
+          tool_calls: [{ id: 'c1', function: { name: 'search_dishes', arguments: '{"q":' } }],
+        }),
+      ),
+      chunk(asDelta({ tool_calls: [{ function: { arguments: '1}' }, extra_content: signature }] })),
+    ]);
+    expect(toolCalls(out)).toEqual([
+      expect.objectContaining({ id: 'c1', argsJson: '{"q":1}', extraContent: signature }),
+    ]);
+  });
 });
