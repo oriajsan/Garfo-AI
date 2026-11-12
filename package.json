@@ -21,7 +21,8 @@
     "db:migrate": "node scripts/with-env.mjs pnpm --filter @garfo/api db:migrate",
     "db:migrate:dev": "node scripts/with-env.mjs pnpm --filter @garfo/api db:migrate:dev",
     "db:seed": "node scripts/with-env.mjs pnpm --filter @garfo/api db:seed",
-    "db:setup": "pnpm db:migrate && pnpm db:seed"
+    "db:setup": "pnpm db:migrate && pnpm db:seed && pnpm db:embed",
+    "db:embed": "node scripts/with-env.mjs pnpm --filter @garfo/api db:embed"
   },
   "devDependencies": {
     "@types/node": "^20",
