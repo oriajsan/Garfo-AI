@@ -18,10 +18,11 @@ const config: Config = {
   ],
   coveragePathIgnorePatterns: ['\\.spec\\.ts$'],
   coverageDirectory: 'coverage',
-  // Only cart/ has a threshold in block 2; tools/ and agent.service.ts arrive in block 3.
   coverageThreshold: {
     global: {},
     './src/cart/': { statements: 80, branches: 80, functions: 80, lines: 80 },
+    './src/tools/': { statements: 80, branches: 80, functions: 80, lines: 80 },
+    './src/chat/agent.service.ts': { statements: 80, branches: 80, functions: 80, lines: 80 },
   },
 };
 

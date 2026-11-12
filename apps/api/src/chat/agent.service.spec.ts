@@ -421,16 +421,15 @@ describe('AgentService', () => {
       { id: '3', role: 'TOOL', content: { toolCallId: 'x', name: 'search_dishes', result: {} } },
       { id: '2', role: 'ASSISTANT', content: { text: 'resto do corte' } },
     ].map((row, i) => ({ ...row, conversationId: CONVERSATION, createdAt: new Date(100 - i) }));
-    const prisma = {
-      message: { findMany: jest.fn().mockResolvedValue(rows) },
-    } as unknown as PrismaService;
+    const findMany = jest.fn().mockResolvedValue(rows);
+    const prisma = { message: { findMany } } as unknown as PrismaService;
     const repository = new ConversationRepository(prisma);
     const history = await repository.loadHistory(CONVERSATION);
     expect(history).toEqual([
       { role: 'user', content: 'pergunta' },
       { role: 'assistant', content: 'resposta' },
     ]);
-    expect(prisma.message.findMany).toHaveBeenCalledWith(
+    expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 20, where: { conversationId: CONVERSATION } }),
     );
 
