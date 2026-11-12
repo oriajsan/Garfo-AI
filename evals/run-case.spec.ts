@@ -106,7 +106,7 @@ describe('runCase on turns that do not finish', () => {
     const completed = result.checks.find((c) => c.name === 'completed');
     expect(completed?.detail).toContain('LLM_TIMEOUT');
     expect(completed?.detail).toContain(
-      'turno interrompido (LLM_TIMEOUT) depois de: search_dishes',
+      'turno interrompido (LLM_TIMEOUT) depois de iniciar: search_dishes',
     );
   });
 
@@ -139,7 +139,7 @@ describe('runCase on turns that do not finish', () => {
     expect(result.timeouts).toBe(2);
     expect(result.fallbacks).toBe(1);
     expect(result.checks.find((c) => c.name === 'completed')?.detail).toContain(
-      'turno interrompido (EVAL_TIMEOUT) depois de: search_dishes',
+      'turno interrompido (EVAL_TIMEOUT) depois de iniciar: search_dishes',
     );
   });
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConsoleLogger, Injectable, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { LlmEventCountingLogger } from './llm-event-counter';
 
@@ -52,7 +52,10 @@ describe('LlmEventCountingLogger and the Nest testing module', () => {
     jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
     jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => {
+    jest.restoreAllMocks();
+    Logger.overrideLogger(new ConsoleLogger());
+  });
 
   // Root cause of "0 timeouts" in the real eval: compile() installs the silent TestingLogger.
   it('loses warnings when only Logger.overrideLogger is called before compile()', async () => {

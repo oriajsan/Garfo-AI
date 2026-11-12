@@ -57,7 +57,7 @@ export interface TurnInterruption {
 export function describeInterruption(interruption: TurnInterruption): string {
   const after =
     interruption.toolsRun.length > 0
-      ? `depois de: ${interruption.toolsRun.join(', ')}`
+      ? `depois de iniciar: ${interruption.toolsRun.join(', ')}`
       : 'antes de qualquer tool';
   return `turno interrompido (${interruption.reason}) ${after}`;
 }
