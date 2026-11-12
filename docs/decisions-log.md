@@ -37,3 +37,5 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D2.17 · Escritas do carrinho serializadas por sessão** com `pg_advisory_xact_lock`, para duas requisições simultâneas não criarem dois carrinhos abertos.
 - **D2.18 · Testes de integração sem banco** avisam e retornam fora do CI e falham com `CI=true`. O teste de ranking só roda se todos os embeddings do banco forem do fake.
 - **D2.19 · `DELETE /cart`** devolve o carrinho com o id real e sem itens; `id: null` só quando não existe linha. `POST /cart/checkout` responde 200; `POST /cart/items`, 201.
+- **D2.20 · Piso do Node 20.19** aplicado em `engines`, `.nvmrc` e Dockerfile (`node:20.19-alpine`), após a revisão do bloco 2 apontar que a D2.13 só estava registrada.
+- **D2.21 · Ranking do fake é só lexical.** Com o `FakeEmbeddingProvider`, "vegetariano barato" traz sobremesas no topo (a palavra "barato" não existe nos textos). Aceito: os filtros estão corretos e, no modo demo do bloco 3, a política extrai os filtros da frase. Com embeddings reais o ranking é semântico.

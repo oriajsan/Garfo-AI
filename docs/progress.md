@@ -12,7 +12,7 @@
 | 4 — Front e deploy   | `feat/web`         | Não iniciado                                                                                               |
 | 5 — Avaliação e docs | `feat/evals-docs`  | Não iniciado                                                                                               |
 
-**Próximo passo:** quando o implementer entregar o bloco 2 em `feat/search-cart`, revisar com o reviewer contra `docs/blocks/bloco-2.md`.
+**Próximo passo:** quando o implementer entregar o bloco 3 em `feat/agent`, revisar com o reviewer contra `docs/blocks/bloco-3.md`.
 
 ## Bloco 1 — Fundação (`feat/foundation`) · 12/11/2026
 

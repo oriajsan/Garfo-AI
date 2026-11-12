@@ -4,6 +4,13 @@
 - **Referências:** SPEC seções 2, 5 (endpoints de chat, erros), 6 (inteira), 8 e 9; `docs/blocks/bloco-2.md`; `docs/decisions-log.md`.
 - **Pronto quando:** `curl -N -X POST localhost:3001/api/v1/chat` mostra o stream com `meta`, `tool_start`, `tool_end`, `dish_cards`, `token` e `done`, com resposta coerente (em modo fake/demo).
 
+## Contexto herdado do bloco 2 (use, não recrie)
+
+- Tipos do LLM: `apps/api/src/llm/llm.types.ts` (`ChatMessage`, `ToolCall`, `ToolDefinition`, `LlmStreamChunk`, `LlmProvider`, `EmbeddingProvider`). Tokens de injeção em `llm.tokens.ts`; fábrica por `LLM_PROVIDER` em `llm.factory.ts`.
+- `FakeLlmProvider` (`fake-llm.provider.ts`): roteiro de `FakeTurn`s e `calls` registrados. Em runtime sem roteiro, hoje devolve `DEMO_MODE_TEXT`; neste bloco a fábrica passa a injetar a política demo (seção 8) no lugar desse texto fixo. Os testes continuam usando roteiros explícitos.
+- `SearchService` (`catalog/search.service.ts`: `search`, `getDish`, `getRestaurant`), `CartService` (`cart/cart.service.ts`), `DomainError` (`common/domain-error.ts`), `SessionGuard` + `@SessionId()` (`common/session.guard.ts`), filtro global (`common/filters/all-exceptions.filter.ts`), montagem compartilhada com o e2e em `app.setup.ts`, códigos e status em `packages/shared/src/errors.ts` (acrescentar `CONVERSATION_NOT_FOUND`, `LLM_ERROR` e `TOOL_TIMEOUT` lá).
+- Testes de banco: helpers em `src/testing/`; `test/setup-env.ts` carrega o `.env`.
+
 ## Tarefas
 
 ### 1. Tipos compartilhados (`packages/shared`)
