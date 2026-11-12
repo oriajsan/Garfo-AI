@@ -151,3 +151,6 @@ vite.config.ts.timestamp-*
 
 # Eval run with the fake provider (D5.1): local validation output, never the official result
 evals/results/fake-latest.md
+
+# Partial eval run (EVAL_ONLY): never the official result
+evals/results/partial-latest.md
