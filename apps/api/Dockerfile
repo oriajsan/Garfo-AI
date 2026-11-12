@@ -17,7 +17,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --frozen-lockfile
 FROM deps AS build
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline
-RUN pnpm --filter "@garfo/api..." build
+RUN pnpm --filter "@garfo/api..." build \
+    && pnpm --filter @garfo/api build:bootstrap
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm --filter @garfo/api deploy --prod /out \
     && cd /out && node_modules/.bin/prisma generate
@@ -28,6 +29,11 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
+# Seed and embeddings scripts compiled to JS (no tsx in production), plus the seed data.
+COPY --from=build --chown=node:node /repo/apps/api/dist-bootstrap ./dist-bootstrap
+COPY --from=build --chown=node:node /repo/data/seed ./data/seed
+COPY --chown=node:node apps/api/docker-entrypoint.sh ./
+ENV SEED_PATH=/app/data/seed/restaurants.json
 USER node
 EXPOSE 3001
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "docker-entrypoint.sh"]

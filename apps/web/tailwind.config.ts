@@ -9,6 +9,16 @@ const config: Config = {
   darkMode: 'media',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      keyframes: {
+        'fade-up': {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: { 'fade-up': 'fade-up 0.25s ease-out both' },
       colors: {
         brand: {
           50: '#fff7ed',

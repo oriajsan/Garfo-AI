@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "rootDir": ".", "outDir": "dist-bootstrap", "noEmit": false },
+  "include": ["prisma/seed.ts", "scripts/embed-dishes.ts"]
+}

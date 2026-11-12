@@ -224,7 +224,7 @@ function replyToTool(message: Extract<ChatMessage, { role: 'tool' }>): FakeTurn 
     );
     return {
       text:
-        `${DEMO_PREFIX}Encontrei estas opções para você:\n${lines.join('\n')}\n` +
+        `${DEMO_PREFIX}Encontrei estas opções para você:\n${lines.join('\n')}\n\n` +
         'Para pedir, diga por exemplo "adiciona o primeiro" ou "quero esse".',
     };
   }

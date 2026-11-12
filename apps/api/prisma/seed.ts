@@ -8,7 +8,9 @@ import { buildEmbeddingText, dishId, restaurantId, seedFileSchema, seedStats } f
  * with stable ids. Calls no external API. Embeddings are generated later by `pnpm db:embed`,
  * which compares `embeddingHash` with the sha256 of `embeddingText`.
  */
-const SEED_PATH = resolve(__dirname, '../../../data/seed/restaurants.json');
+// SEED_PATH lets the compiled copy in the Docker image (dist-bootstrap/) find the JSON.
+const SEED_PATH =
+  process.env.SEED_PATH ?? resolve(__dirname, '../../../data/seed/restaurants.json');
 
 async function main(): Promise<void> {
   const raw: unknown = JSON.parse(readFileSync(SEED_PATH, 'utf8'));

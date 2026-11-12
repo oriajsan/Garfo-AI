@@ -94,3 +94,17 @@ Ambas as dependências estão permitidas pelo briefing do bloco 3 (e `@nestjs/th
 | --------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `zod-to-json-schema`  | api  | Converte o schema Zod de cada tool no JSON Schema que os provedores de LLM esperam (SPEC seção 6), mantendo uma única fonte de verdade para validação e para a definição da tool.                                 |
 | `@nestjs/throttler@6` | api  | Rate limit de 15 req/min por IP e por sessão só em `POST /chat` (SPEC seção 6). A linha 6 aceita Nest 10 e Node 20; usada com dois _throttlers_ nomeados e um guard próprio que responde `RATE_LIMITED` em pt-BR. |
+
+### Bloco 4: front e deploy
+
+`zustand`, `@tanstack/react-query`, `react-markdown`, `lucide-react` e `clsx` constam na lista da seção 3 (sem registro necessário). Fora da lista, só ferramental de teste no web:
+
+| Pacote                                      | Onde      | Motivo                                                                                                         |
+| ------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------- |
+| `jest`, `ts-jest`, `@types/jest`, `ts-node` | web (dev) | Teste do parser SSE (D4.4). Mesmo conjunto da API e do shared; o `ts-node` é para o Jest ler `jest.config.ts`. |
+
+Escolhas de ferramental do bloco:
+
+- **`output: 'standalone'` com `experimental.outputFileTracingRoot` na raiz do repositório:** num monorepo pnpm, o rastreamento de arquivos do Next precisa partir da raiz para copiar o `packages/shared` e os pacotes do store do pnpm; o servidor fica em `apps/web/server.js` dentro da imagem.
+- **Seed e `db:embed` compilados para JS na imagem da API** (`tsconfig.bootstrap.json`, saída em `dist-bootstrap/`), em vez de levar o `tsx` para produção. O caminho do JSON do seed vem de `SEED_PATH` na imagem.
+- **Ícones de marca:** o `lucide-react` atual não traz o logo do GitHub; foi usado um SVG inline em vez de uma dependência extra.
