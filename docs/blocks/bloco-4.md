@@ -4,6 +4,13 @@
 - **Referências:** SPEC seções 3, 6 (eventos SSE), 7 (inteira), 9 (Docker, variáveis, deploy, segurança); `docs/blocks/bloco-2.md` e `bloco-3.md` (contratos de carrinho, eventos e `health.llm`); `docs/decisions-log.md`.
 - **Pronto quando (nesta sessão):** `docker compose up --build` sobe `db`, `api` e `web` com um único comando; em `http://localhost:3000` dá para conversar (modo demonstração), ver cards, adicionar ao carrinho e finalizar o pedido. O deploy real fica para o dono do projeto (P4), com configs e checklist prontos.
 
+## Contexto herdado dos blocos 2 e 3 (use, não recrie)
+
+- Contratos em `packages/shared/src/`: `chat.ts` (`chatRequestSchema`, `dishCardSchema`, `chatEventSchema` como união `{ type, data }`; no fio, `event: <type>` + `data: <json de data>`), `cart.ts` (`cartSchema`, `checkoutSchema`, `addCartItemSchema`, `updateCartItemSchema`), `errors.ts` (códigos e status, incluindo `RATE_LIMITED`, `BUDGET_EXCEEDED`, `LLM_ERROR`, `CONVERSATION_NOT_FOUND`), `money.ts` (`formatBRL`), `health.ts` (`llm: "openai" | "fake"`).
+- Endpoints: `/api/v1/chat` (SSE, exige `X-Session-Id`; erros antes do stream chegam como JSON `{ error }` com 400/429), `/api/v1/chat/:id/messages`, `/api/v1/cart*`, `/api/v1/restaurants*`, `/api/v1/dishes/search`, `/api/v1/health`.
+- O stream pode terminar com `error` sem `done` (ex.: `LLM_ERROR`); o front deve sair do estado `streaming` nos dois casos e também quando o stream fechar sem nenhum dos dois.
+- CORS da API aceita só `CORS_ORIGIN` (padrão `http://localhost:3000`).
+
 ## Tarefas
 
 ### 1. Front (`apps/web/src`)

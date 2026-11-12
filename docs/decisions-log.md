@@ -39,3 +39,29 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D2.19 · `DELETE /cart`** devolve o carrinho com o id real e sem itens; `id: null` só quando não existe linha. `POST /cart/checkout` responde 200; `POST /cart/items`, 201.
 - **D2.20 · Piso do Node 20.19** aplicado em `engines`, `.nvmrc` e Dockerfile (`node:20.19-alpine`), após a revisão do bloco 2 apontar que a D2.13 só estava registrada.
 - **D2.21 · Ranking do fake é só lexical.** Com o `FakeEmbeddingProvider`, "vegetariano barato" traz sobremesas no topo (a palavra "barato" não existe nos textos). Aceito: os filtros estão corretos e, no modo demo do bloco 3, a política extrai os filtros da frase. Com embeddings reais o ranking é semântico.
+
+## Bloco 3 (decisões do briefing)
+
+- **D3.1 · Histórico começa sempre em `USER`.** Cortar as últimas 20 mensagens pode deixar um resultado de tool sem a chamada correspondente, e a OpenAI rejeita isso.
+- **D3.2 · Ids válidos para cards vêm de toda a conversa**, não só da rodada, para que "quero esse" funcione mensagens depois.
+- **D3.3 · Não truncar cards em 3.** A regra é do prompt; truncar no backend esconderia a falha da avaliação (`maxRecommendations`).
+- **D3.4 · Erro do provedor** vira evento `error` (`LLM_ERROR`) e a rodada não é persistida.
+- **D3.5 · `conversationId` inexistente ou de outra sessão** cria uma conversa nova em silêncio (o front pode ter um id antigo depois de um reset do banco).
+- **D3.6 · Texto do assistente persistido com os marcadores** (o modelo precisa dos ids no histórico); o endpoint de mensagens remove os marcadores e reconstrói os cards.
+- **D3.7 · Erros antes do stream são JSON normal (400/429)**; depois que o stream abre, viram evento `error`.
+- **D3.8 · Teto diário contado no banco** (mensagens `USER` desde a meia-noite de São Paulo): sobrevive a reinícios e funciona com mais de uma instância.
+- **D3.9 · Modo demonstração heurístico.** Sem chave, o `FakeLlmProvider` usa uma política determinística (regex de filtros + `search_dishes`/`add_to_cart`) para a demo do `docker compose up` funcionar de ponta a ponta, com aviso na interface (SPEC seção 9: "respostas roteirizadas e aviso na interface").
+
+## Bloco 3 (decisões do implementer, aceitas pelo líder)
+
+- **D3.10 · Eventos tipados como `{ type, data }`** no `shared`; no fio, `event: <type>` e `data:` só com o payload da SPEC.
+- **D3.11 · Marcador malformado é removido** (ex.: `[[dish:123]]` ou `[[dish:` sem fechar no fim do stream) e contado como malformado: `[[dish:` nunca chega ao front.
+- **D3.12 · Histórico robusto:** além de começar em `USER`, descarta grupos `assistant`+`tool` incompletos.
+- **D3.13 · Pratos "vistos"** = objetos com `id`, `name` e `priceCents` em resultados de tools; itens de carrinho usam `itemId`/`dishId` para não contarem como prato visto.
+- **D3.14 · Abort pelo `res.on('close')`**, não `req.on('close')`: no Node 16+ o `close` do request dispara ao terminar de ler o corpo (explicado no ADR 004).
+- **D3.15 · Teto diário** com meia-noite de São Paulo em offset fixo −03:00 (sem horário de verão desde 2019).
+- **D3.16 · Códigos novos:** `CONVERSATION_NOT_FOUND` (404), `LLM_ERROR` (502), `TOOL_TIMEOUT` (504).
+- **D3.17 · Política demo** entende "adiciona o primeiro/segundo/terceiro" pela posição na última resposta com cards.
+- **D3.18 · JSON Schema das tools em draft 7** (`target: 'jsonSchema7'`), com teste que barra `$ref`, `$schema` e `exclusiveMinimum` booleano. O alvo `openApi3` gerava a forma booleana do draft 4, que a OpenAI pode rejeitar.
+- **D3.19 · "barato/barata/em conta" no modo demo = até R$ 25**, para o chip "Uma sobremesa barata" funcionar sem chave.
+- **D3.20 · Limitações aceitas do modo demo:** não recusa assuntos fora de comida (isso é papel do LLM real, regra 8 do prompt); o timeout de tool não cancela o handler; o teto diário não conta rodadas abortadas. Registradas para a revisão final.

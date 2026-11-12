@@ -14,6 +14,8 @@ const JSON_BODY_LIMIT = '10kb';
 export function configureApp(app: NestExpressApplication): void {
   const config = app.get(ConfigService);
 
+  // Behind Railway's proxy: the real client IP comes from X-Forwarded-For (rate limit per IP).
+  app.set('trust proxy', 1);
   app.setGlobalPrefix(API_PREFIX);
   app.useBodyParser('json', { limit: JSON_BODY_LIMIT });
   app.enableCors({ origin: config.get('CORS_ORIGIN') });

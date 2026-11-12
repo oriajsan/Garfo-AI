@@ -17,21 +17,27 @@ export const DEMO_MODE_TEXT =
 
 const TEXT_CHUNK_SIZE = 12;
 
+/** Decides the next turn when there is no script left (the key-less demo, see demo-policy.ts). */
+export type FakeFallback = (input: LlmChatInput) => FakeTurn;
+
 /**
  * Scripted provider for tests and key-less runs. Each `chat` call plays the next turn of the
  * script, streaming text in small pieces. Every input received is recorded in `calls`.
- * Without a script (or once it runs out) it answers with a fixed demo-mode text; the richer
- * runtime behaviour of the demo belongs to block 3.
+ * Without a script (or once it runs out) it asks the `fallback`: by default a fixed demo-mode
+ * text; at runtime the factory injects the heuristic demo policy.
  */
 export class FakeLlmProvider implements LlmProvider {
   readonly calls: LlmChatInput[] = [];
   private cursor = 0;
 
-  constructor(private readonly script: FakeTurn[] = []) {}
+  constructor(
+    private readonly script: FakeTurn[] = [],
+    private readonly fallback: FakeFallback = () => ({ text: DEMO_MODE_TEXT }),
+  ) {}
 
   async *chat(input: LlmChatInput): AsyncIterable<LlmStreamChunk> {
     this.calls.push(input);
-    const turn = this.script[this.cursor++] ?? { text: DEMO_MODE_TEXT };
+    const turn = this.script[this.cursor++] ?? this.fallback(input);
     let outputChars = 0;
 
     for (const piece of splitText(turn.text ?? '')) {
