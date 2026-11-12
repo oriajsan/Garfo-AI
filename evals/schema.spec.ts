@@ -31,7 +31,8 @@ describe('cases.json', () => {
       expect(c.expect.minToolCalls).toBeUndefined();
       expect(c.expect.mustCallTools).toContain('add_to_cart');
       expect(c.expect.cartNeverMixesRestaurants).toBe(true);
-      expect(c.expect.finalReplyMentions?.allOf.length).toBeGreaterThanOrEqual(2);
+      const mentions = c.expect.finalReplyMentions;
+      expect(mentions && 'anyOf' in mentions ? mentions.anyOf.length : 0).toBeGreaterThanOrEqual(2);
       expect(c.expect.mustNotCallTools).toContain('clear_cart');
       expect(c.expect.cartAfter).toBeDefined();
     }

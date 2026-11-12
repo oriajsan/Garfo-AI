@@ -417,31 +417,28 @@
       "noHallucinatedDishes": true,
       "cartNeverMixesRestaurants": true,
       "finalReplyMentions": {
-        "allOf": [
-          [
-            "restaurante",
-            "pizzaria",
-            "loja",
-            "lugar",
-            "casa",
-            "estabelecimento",
-            "kaizen",
-            "forno da vila"
-          ],
-          [
-            "outro",
-            "outra",
-            "diferente",
-            "mesmo",
-            "um por vez",
-            "um restaurante",
-            "unico",
-            "so pode",
-            "apenas",
-            "esvaziar",
-            "limpar",
-            "trocar"
-          ]
+        "anyOf": [
+          {
+            "allOf": [["kaizen"], ["forno da vila"]]
+          },
+          {
+            "allOf": [
+              ["restaurante", "pizzaria", "loja", "lugar", "estabelecimento"],
+              [
+                "outr",
+                "diferent",
+                "esvazi",
+                "limp",
+                "troc",
+                "um por vez",
+                "um restaurante",
+                "unico",
+                "so pode",
+                "apenas um",
+                "mesmo restaurante"
+              ]
+            ]
+          }
         ]
       }
     }
@@ -469,22 +466,28 @@
       "noHallucinatedDishes": true,
       "cartNeverMixesRestaurants": true,
       "finalReplyMentions": {
-        "allOf": [
-          ["restaurante", "pizzaria", "loja", "lugar", "casa", "estabelecimento", "brasa", "cedro"],
-          [
-            "outro",
-            "outra",
-            "diferente",
-            "mesmo",
-            "um por vez",
-            "um restaurante",
-            "unico",
-            "so pode",
-            "apenas",
-            "esvaziar",
-            "limpar",
-            "trocar"
-          ]
+        "anyOf": [
+          {
+            "allOf": [["brasa"], ["cedro"]]
+          },
+          {
+            "allOf": [
+              ["restaurante", "pizzaria", "loja", "lugar", "estabelecimento"],
+              [
+                "outr",
+                "diferent",
+                "esvazi",
+                "limp",
+                "troc",
+                "um por vez",
+                "um restaurante",
+                "unico",
+                "so pode",
+                "apenas um",
+                "mesmo restaurante"
+              ]
+            ]
+          }
         ]
       }
     }

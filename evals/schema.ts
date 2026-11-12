@@ -100,6 +100,10 @@ export const cartAfterSchema = z.union([
 ]);
 export type CartAfter = z.infer<typeof cartAfterSchema>;
 
+const mentionGroupsSchema = z.array(z.array(z.string().min(1)).min(1)).min(1);
+const mentionsAllOfSchema = z.object({ allOf: mentionGroupsSchema }).strict();
+const mentionsAnyOfSchema = z.object({ anyOf: z.array(mentionsAllOfSchema).min(1) }).strict();
+
 export const expectationsSchema = z
   .object({
     mustCallTools: z.array(toolNameSchema).optional(),
@@ -118,13 +122,12 @@ export const expectationsSchema = z
     /** After every user turn, all items in the cart belong to the same restaurant. */
     cartNeverMixesRestaurants: z.boolean().optional(),
     /**
-     * The final assistant reply (dish markers removed) must match every group. Each inner list
-     * holds alternatives, one is enough. Case- and accent-insensitive.
+     * The final assistant reply (dish markers removed) must satisfy the check. `{ allOf }`: every
+     * group matches (each inner list holds alternatives, one is enough). `{ anyOf }`: a list of
+     * such `allOf` alternatives, the case passes if any one does. Substring match on text without
+     * case or accents.
      */
-    finalReplyMentions: z
-      .object({ allOf: z.array(z.array(z.string().min(1)).min(1)).min(1) })
-      .strict()
-      .optional(),
+    finalReplyMentions: z.union([mentionsAllOfSchema, mentionsAnyOfSchema]).optional(),
   })
   .strict();
 export type Expectations = z.infer<typeof expectationsSchema>;

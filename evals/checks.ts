@@ -156,7 +156,10 @@ export function evaluateCase(evalCase: EvalCase, observation: Observation): Case
     checks.push(checkCartNeverMixes(observation.cartRestaurantIdsPerTurn));
   }
   if (expect.finalReplyMentions) {
-    checks.push(checkFinalReply(expect.finalReplyMentions.allOf, observation.finalReplyText));
+    const mentions = expect.finalReplyMentions;
+    const alternatives =
+      'anyOf' in mentions ? mentions.anyOf.map((a) => a.allOf) : [mentions.allOf];
+    checks.push(checkFinalReply(alternatives, observation.finalReplyText));
   }
 
   return { passed: checks.every((c) => c.passed), checks };
@@ -185,18 +188,22 @@ export function normalizeText(text: string): string {
     .toLowerCase();
 }
 
-function checkFinalReply(groups: string[][], reply: string): CheckResult {
+function checkFinalReply(alternatives: string[][][], reply: string): CheckResult {
   const text = normalizeText(reply);
-  const missing = groups.filter(
-    (group) => !group.some((word) => text.includes(normalizeText(word))),
-  );
+  const matches = (group: string[]): boolean =>
+    group.some((word) => text.includes(normalizeText(word)));
+  const passed = alternatives.some((groups) => groups.every(matches));
+  const describe = (groups: string[][]): string =>
+    groups.map((g) => `[${g.join(' | ')}]`).join(' and ');
   return {
     name: 'finalReplyMentions',
-    passed: missing.length === 0,
-    detail:
-      missing.length === 0
-        ? 'final reply mentions the conflict'
-        : `final reply lacks any of: ${missing.map((g) => `[${g.join(' | ')}]`).join(' and ')}`,
+    passed,
+    detail: passed
+      ? 'final reply mentions the conflict'
+      : alternatives.length === 1
+        ? `final reply lacks any of: ${describe(alternatives[0] ?? [])}`
+        : `final reply matched none of ${alternatives.length} alternatives: ` +
+          alternatives.map((groups, i) => `(${i + 1}) ${describe(groups)}`).join('; or '),
   };
 }
 

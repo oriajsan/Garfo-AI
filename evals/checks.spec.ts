@@ -5,7 +5,9 @@ import {
   type DishFacts,
   type Observation,
 } from './checks';
-import { type EvalCase } from './schema';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { evalCasesFileSchema, type EvalCase } from './schema';
 
 const dish = (overrides: Partial<DishFacts>): DishFacts => ({
   id: 'd1',
@@ -375,5 +377,47 @@ describe('dishViolations', () => {
   it('compares the price in integer cents, without float error', () => {
     expect(dishViolations(dish({ priceCents: 2910 }), { maxPriceReais: 29.1 })).toEqual([]);
     expect(dishViolations(dish({ priceCents: 2911 }), { maxPriceReais: 29.1 })).toHaveLength(1);
+  });
+});
+
+describe('finalReplyMentions with anyOf alternatives', () => {
+  const evalCases = evalCasesFileSchema.parse(
+    JSON.parse(readFileSync(resolve(__dirname, 'cases.json'), 'utf8')),
+  );
+  const burger = evalCases.find((x) => x.id === 'conflict-burger-then-hummus')!;
+  const sushi = evalCases.find((x) => x.id === 'conflict-sushi-then-pizza')!;
+  const base = {
+    toolCalls: [{ name: 'add_to_cart', args: {} }],
+    cartItems: [{ dishName: 'Burger Brasa clássico', quantity: 1 }],
+    cartRestaurantIdsPerTurn: [['r1'], ['r1']],
+  };
+  const verdict = (c: typeof burger, text: string) =>
+    evaluateCase(c, observation({ ...base, finalReplyText: text })).checks.find(
+      (k) => k.name === 'finalReplyMentions',
+    )!;
+
+  it('passes by naming both restaurants (real Gemini reply, "esvazie" included)', () => {
+    const reply =
+      'O seu carrinho atual é do restaurante **Brasa & Pão**, mas o homus com pão sírio é do **Cedro do Líbano**. Quer que eu esvazie o carrinho atual para começar um pedido no Cedro do Líbano?';
+    expect(verdict(burger, reply).passed).toBe(true);
+  });
+
+  it('passes by the generic alternative without naming restaurants, by stem', () => {
+    expect(
+      verdict(burger, 'Esse prato é de outro restaurante, quer esvaziar o carrinho?').passed,
+    ).toBe(true);
+    expect(verdict(sushi, 'Isso é de outra loja; posso limpar o carrinho?').passed).toBe(true);
+  });
+
+  it('fails when the conflict is not mentioned, listing the alternatives', () => {
+    const v = verdict(burger, 'Adicionei o homus!');
+    expect(v.passed).toBe(false);
+    expect(v.detail).toContain('matched none of 2 alternatives');
+    expect(v.detail).toContain('(1) [brasa] and [cedro]');
+    expect(v.detail).toContain('(2) [restaurante | pizzaria');
+  });
+
+  it('does not pass with only one restaurant name', () => {
+    expect(verdict(burger, 'Seu burger da Brasa está no carrinho.').passed).toBe(false);
   });
 });
