@@ -78,6 +78,23 @@ describe('DishMarkerParser', () => {
     expect(long.text).not.toContain('[[dish:');
   });
 
+  it('only counts a marker cut at the very end as malformed when flush runs', () => {
+    const parser = new DishMarkerParser();
+    parser.push(`Homus ([[dish:${A}`);
+    expect(parser.malformed).toBe(0); // still waiting for the closing ]]
+    const tail = parser.flush();
+    expect(parser.malformed).toBe(1);
+    expect(tail).not.toContain('[[dish:');
+    expect(parser.ids).toEqual([]);
+  });
+
+  it('flushes held text after a closed marker and keeps the held "[" at the end', () => {
+    const { text, parser } = run([`Veja [[dish:${A}]] depois [`]);
+    expect(text).toBe('Veja depois [');
+    expect(parser.malformed).toBe(0);
+    expect(parser.ids).toEqual([A]);
+  });
+
   it('accepts upper-case uuids and returns them lower-cased', () => {
     const { parser } = run([`[[dish:${A.toUpperCase()}]]`]);
     expect(parser.ids).toEqual([A]);

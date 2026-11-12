@@ -137,3 +137,22 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D6.16 · Aviso de lentidão no front depois de 8 s sem nenhum evento** durante o streaming (silêncio, não tempo total), abaixo do indicador da tool, com `aria-live`.
 - Commits `93d13c4`, `661ba4f`, `d593d65` e `4d23113`, aprovados pelo reviewer (só achados menores: sem teste explícito de vazamento de timers e listeners, e sem teste do `MessageBubble`).
 - **D6.17 · Contadores do eval e rastro parcial (antes da execução final).** O `compile()` do `@nestjs/testing` trocava o logger global por um que descarta avisos. Por isso os contadores de retries, timeouts e fallbacks nunca contaram nada (v2 e v3 inclusive). Agora o observador é instalado com `.setLogger()` e os contadores são lidos em qualquer desfecho do turno. Em turnos interrompidos, um `TracingToolRegistry` (só no eval) registra as tools iniciadas e seus argumentos, que viram a fonte de verdade dos checks de tools. O relatório diz "turno interrompido (X) depois de iniciar: …". Commits `8c8d228` e `3e7d714`, aprovados pelo reviewer. **A próxima execução real é a oficial e encerra os ciclos de ajuste** (decisão do dono).
+
+## Pós-eval: respostas truncadas (2026-11-12)
+
+- **D6.18 · Stream sem `finish_reason` válido ou com texto estruturalmente incompleto é erro recuperável.** Origem: na execução oficial, `conflict-burger-then-hummus` terminou em "…é do restaurante *". O texto bruto persistido mostra que o stream do provedor terminou cedo; o parser de marcadores não perdeu nada. O adaptador ignorava o `finish_reason`.
+  - **Diagnóstico:** o `finish_reason` passa a ser capturado (inclusive em chunk sem `delta`) e logado em `llm_stream_end`.
+  - **Detecção** (`apps/api/src/chat/truncation.ts`):
+    - `finish_reason` nulo ou diferente de `stop`/`tool_calls`;
+    - sem tool calls, texto estruturalmente incompleto: `**` ímpar, `*` de abertura no fim, `[` ou `(` no fim, ou marcador `[[dish:` aberto.
+  - **Reação:**
+    - emite `message_reset` (o front apaga o texto parcial da tentativa) e repete uma vez, fora do `MAX_ITERATIONS`;
+    - se truncar de novo, devolve `LLM_ERROR` sem persistir nada;
+    - nada da tentativa truncada vaza (cards, ids, persistência).
+  - **Eval:** conta `llm_truncated` por caso.
+  - **Riscos avaliados:**
+    - **Regra estrita para `finish_reason` nulo, mantida.** O reviewer sugeriu entregar na 2ª tentativa quando o texto parecer bem formado, mas isso deixaria passar justamente um corte no meio da frase, que é o bug original. Checado com o Gemini real: 6 execuções e 16 chamadas de chat, 0 truncamentos acusados e todas passaram, ou seja, o provedor envia `finish_reason` em respostas completas.
+    - **Mudança de comportamento:** uma resposta que bate em `max_tokens` (`finish_reason: length`) agora repete e, se repetir, vira erro em vez de texto parcial. Os limites são 4096 no Gemini e 800 na OpenAI.
+    - **Sem código de erro novo:** `LLM_TRUNCATED` faria o front antigo descartar o evento de erro.
+  - **Resultado oficial do eval mantido em 18/20.**
+  - Commits `4057c9a`, `957af71` e `f3c0a0d`, aprovados pelo reviewer.

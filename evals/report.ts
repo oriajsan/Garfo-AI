@@ -24,6 +24,8 @@ export interface CaseResult {
   timeouts: number;
   /** Times the fallback model was used (logged `llm_fallback`) during the case. */
   fallbacks: number;
+  /** Model turns cut short (logged `llm_truncated`, both attempts) during the case. */
+  truncations: number;
   /** Final assistant text of the last turn; shown in the report for failed cases. */
   finalReplyText?: string;
 }
@@ -95,6 +97,7 @@ export interface Summary {
   totalRetryWaitMs: number;
   totalTimeouts: number;
   totalFallbacks: number;
+  totalTruncations: number;
 }
 
 export function summarize(results: CaseResult[], info: RunInfo): Summary {
@@ -127,6 +130,7 @@ export function summarize(results: CaseResult[], info: RunInfo): Summary {
     totalRetryWaitMs: results.reduce((sum, r) => sum + r.retryWaitMs, 0),
     totalTimeouts: results.reduce((sum, r) => sum + r.timeouts, 0),
     totalFallbacks: results.reduce((sum, r) => sum + r.fallbacks, 0),
+    totalTruncations: results.reduce((sum, r) => sum + r.truncations, 0),
     avgEmbedCalls: total === 0 ? 0 : results.reduce((sum, r) => sum + r.embedCalls, 0) / total,
   };
 }
@@ -179,6 +183,7 @@ export function renderMarkdown(results: CaseResult[], info: RunInfo): string {
     `- **Chamadas ao LLM por caso (média):** ${s.avgChatCalls.toFixed(1)} de chat, ${s.avgEmbedCalls.toFixed(1)} de embeddings`,
     `- **Retries 429/503:** ${s.totalRetries} no total, somando ${Math.round(s.totalRetryWaitMs)} ms de espera de backoff (incluídos na latência)`,
     `- **Timeouts de primeiro chunk:** ${s.totalTimeouts} no total; **fallback usado:** ${s.totalFallbacks} vez(es). \`LLM_TIMEOUT\` continua contando como falha do agente`,
+    `- **Respostas truncadas (\`llm_truncated\`):** ${s.totalTruncations} no total (cada ocorrência refaz a chamada uma vez; a segunda falha vira \`LLM_ERROR\`)`,
     '',
     '## Acerto por categoria',
     '',
@@ -190,12 +195,12 @@ export function renderMarkdown(results: CaseResult[], info: RunInfo): string {
     '',
     '## Acerto por caso',
     '',
-    '| Caso | Categoria | Resultado | Chat | Embeddings | Retries | Timeouts | Fallbacks | Detalhe das falhas |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| Caso | Categoria | Resultado | Chat | Embeddings | Retries | Timeouts | Fallbacks | Truncamentos | Detalhe das falhas |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ...results.map((r) => {
       const failed = r.checks.filter((c) => !c.passed);
       const detail = failed.map((c) => `${c.name}: ${c.detail}`).join('; ');
-      return `| \`${r.id}\` | ${CATEGORY_LABELS[r.category]} | ${r.infra ? 'infraestrutura' : r.passed ? 'passou' : 'falhou'} | ${r.chatCalls} | ${r.embedCalls} | ${r.retries} | ${r.timeouts} | ${r.fallbacks} | ${cell(detail)} |`;
+      return `| \`${r.id}\` | ${CATEGORY_LABELS[r.category]} | ${r.infra ? 'infraestrutura' : r.passed ? 'passou' : 'falhou'} | ${r.chatCalls} | ${r.embedCalls} | ${r.retries} | ${r.timeouts} | ${r.fallbacks} | ${r.truncations} | ${cell(detail)} |`;
     }),
     '',
   );
@@ -215,10 +220,10 @@ export function renderTerminalTable(results: CaseResult[]): string {
   const rows = results.map((r) => {
     const passedChecks = r.checks.filter((c) => c.passed).length;
     const ms = r.latenciesMs.reduce((a, b) => a + b, 0);
-    return `${r.id.padEnd(idWidth)}  ${(r.infra ? 'INFRA' : r.passed ? 'PASS' : 'FAIL').padEnd(5)}  ${`${passedChecks}/${r.checks.length}`.padEnd(5)}  ${String(ms).padStart(6)} ms  ${String(r.chatCalls).padStart(4)}  ${String(r.embedCalls).padStart(3)}  ${String(r.retries).padStart(5)}  ${String(r.timeouts).padStart(7)}  ${String(r.fallbacks).padStart(8)}`;
+    return `${r.id.padEnd(idWidth)}  ${(r.infra ? 'INFRA' : r.passed ? 'PASS' : 'FAIL').padEnd(5)}  ${`${passedChecks}/${r.checks.length}`.padEnd(5)}  ${String(ms).padStart(6)} ms  ${String(r.chatCalls).padStart(4)}  ${String(r.embedCalls).padStart(3)}  ${String(r.retries).padStart(5)}  ${String(r.timeouts).padStart(7)}  ${String(r.fallbacks).padStart(8)}  ${String(r.truncations).padStart(6)}`;
   });
   return [
-    `${'caso'.padEnd(idWidth)}  res.    checks     tempo  chat  emb  retry  timeout  fallback`,
+    `${'caso'.padEnd(idWidth)}  res.    checks     tempo  chat  emb  retry  timeout  fallback  trunc.`,
     ...rows,
   ].join('\n');
 }

@@ -179,6 +179,8 @@ describe('adaptOpenAiStream', () => {
     expect((await collect([odd])).at(-1)).toEqual({
       type: 'done',
       usage: { inputTokens: 0, outputTokens: 3 },
+      finishReason: null,
+      model: '',
     });
   });
 
@@ -207,14 +209,33 @@ describe('adaptOpenAiStream', () => {
       { type: 'text', delta: 'Olá' },
       { type: 'text', delta: ' mundo' },
       { type: 'tool_call', id: 'call_1', name: 'add_to_cart', argsJson: '{"dish_id":"d1"}' },
-      { type: 'done', usage: { inputTokens: 10, outputTokens: 5 } },
+      { type: 'done', usage: { inputTokens: 10, outputTokens: 5 }, finishReason: null, model: '' },
     ]);
+  });
+
+  it('keeps the finish_reason of whichever chunk carries it and the model it was given', async () => {
+    const last = chunk({});
+    last.choices = [{ index: 0, delta: {}, finish_reason: 'stop' }];
+    const out: LlmStreamChunk[] = [];
+    for await (const item of adaptOpenAiStream(
+      streamOf([chunk({ content: 'oi' }), last, { ...chunk({}), choices: [] }]),
+      'gemini-x',
+    )) {
+      out.push(item);
+    }
+    expect(out.at(-1)).toMatchObject({ type: 'done', finishReason: 'stop', model: 'gemini-x' });
+  });
+
+  it('reports a non-stop finish_reason such as length', async () => {
+    const last = chunk({ content: 'cortado' });
+    last.choices = [{ index: 0, delta: { content: 'cortado' }, finish_reason: 'length' }];
+    expect((await collect([last])).at(-1)).toMatchObject({ finishReason: 'length' });
   });
 
   it('reports zero usage when the stream carries none', async () => {
     expect(await collect([chunk({ content: 'x' })])).toEqual([
       { type: 'text', delta: 'x' },
-      { type: 'done', usage: { inputTokens: 0, outputTokens: 0 } },
+      { type: 'done', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: null, model: '' },
     ]);
   });
 });

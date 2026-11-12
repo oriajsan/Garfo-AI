@@ -39,6 +39,15 @@ export type ChatUsage = z.infer<typeof chatUsageSchema>;
 export const chatEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('meta'), data: z.object({ conversationId: z.string() }) }),
   z.object({ type: z.literal('token'), data: z.object({ text: z.string() }) }),
+  /**
+   * The text streamed so far for the CURRENT model call was cut short and is being discarded
+   * (the agent retries once, or fails). The client wipes the text of that call, not earlier
+   * text, tool runs or cards. Older clients ignore unknown events.
+   */
+  z.object({
+    type: z.literal('message_reset'),
+    data: z.object({ reason: z.literal('truncated') }),
+  }),
   z.object({
     type: z.literal('tool_start'),
     data: z.object({ id: z.string(), name: z.string(), label: z.string() }),

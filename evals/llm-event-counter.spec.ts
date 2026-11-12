@@ -20,6 +20,15 @@ describe('LlmEventCountingLogger', () => {
     expect(logger.waitMs).toBe(4000);
   });
 
+  it('counts llm_truncated events', () => {
+    logger.warn(JSON.stringify({ event: 'llm_truncated', attempt: 1, reason: 'no_finish_reason' }));
+    logger.warn(
+      JSON.stringify({ event: 'llm_truncated', attempt: 2, reason: 'finish_reason_length' }),
+    );
+    expect(logger.truncations).toBe(2);
+    expect(logger.timeouts).toBe(0);
+  });
+
   it('counts llm_timeout and llm_fallback events', () => {
     logger.warn(JSON.stringify({ event: 'llm_timeout', model: 'a', elapsedMs: 15000, attempt: 1 }));
     logger.warn(JSON.stringify({ event: 'llm_timeout', model: 'b', elapsedMs: 15000, attempt: 2 }));

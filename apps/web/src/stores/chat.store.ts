@@ -43,6 +43,13 @@ interface ChatState {
   dismissError: () => void;
 }
 
+/** Per-request state of the SSE handler. */
+export interface StreamFlags {
+  finished: boolean;
+  /** Length of the assistant text when the current model call began (see `message_reset`). */
+  attemptStart: number;
+}
+
 let abortController: AbortController | null = null;
 let counter = 0;
 const nextId = (prefix: string): string => `${prefix}-${Date.now()}-${counter++}`;
@@ -69,7 +76,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       return empty ? { messages: state.messages.slice(0, -1) } : state;
     });
 
-  const handleEvent = (event: ChatEvent, flags: { finished: boolean }): void => {
+  const handleEvent = (event: ChatEvent, flags: StreamFlags): void => {
     switch (event.type) {
       case 'meta':
         storeConversationId(event.data.conversationId);
@@ -77,6 +84,10 @@ export const useChatStore = create<ChatState>((set, get) => {
         break;
       case 'token':
         patchLast((m) => ({ ...m, text: m.text + event.data.text }));
+        break;
+      case 'message_reset':
+        // Wipe only the text of the current model call; text before a tool run is kept.
+        patchLast((m) => ({ ...m, text: m.text.slice(0, flags.attemptStart) }));
         break;
       case 'tool_start':
         patchLast((m) => ({
@@ -88,12 +99,16 @@ export const useChatStore = create<ChatState>((set, get) => {
         }));
         break;
       case 'tool_end':
-        patchLast((m) => ({
-          ...m,
-          tools: m.tools.map((t) =>
-            t.id === event.data.id ? { ...t, done: true, ok: event.data.ok } : t,
-          ),
-        }));
+        patchLast((m) => {
+          // The next model call starts here: a later reset must not reach back past this point.
+          flags.attemptStart = m.text.length;
+          return {
+            ...m,
+            tools: m.tools.map((t) =>
+              t.id === event.data.id ? { ...t, done: true, ok: event.data.ok } : t,
+            ),
+          };
+        });
         break;
       case 'dish_cards':
         patchLast((m) => {
@@ -161,7 +176,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       const controller = new AbortController();
       abortController = controller;
       const { signal } = controller;
-      const flags = { finished: false };
+      const flags: StreamFlags = { finished: false, attemptStart: 0 };
       const watcher = createSilenceWatcher((slow) => set({ slow }));
       set((state) => ({
         status: 'streaming',

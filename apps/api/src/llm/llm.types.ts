@@ -37,7 +37,17 @@ export interface LlmUsage {
 export type LlmStreamChunk =
   | { type: 'text'; delta: string }
   | { type: 'tool_call'; id: string; name: string; argsJson: string; extraContent?: JsonValue }
-  | { type: 'done'; usage: LlmUsage };
+  | {
+      type: 'done';
+      usage: LlmUsage;
+      /**
+       * Last `finish_reason` any chunk carried (`stop`, `tool_calls`, `length`...), or null when
+       * the stream ended without one (cut short).
+       */
+      finishReason: string | null;
+      /** Model that actually answered (the main one or the fallback). */
+      model: string;
+    };
 
 export interface LlmChatInput {
   system: string;

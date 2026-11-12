@@ -506,3 +506,197 @@ describe('AgentService', () => {
     expect(first?.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
   });
 });
+
+describe('AgentService truncated answers', () => {
+  const seen: Array<[string, string]> = [[DISH_1, 'Baião de dois']];
+  const CUT = `O **Homus com pão sírio** ([[dish:${DISH_1}]]) é do restaurante *`;
+  const FULL = `O **Homus com pão sírio** ([[dish:${DISH_1}]]) é do restaurante *Oriente*. Posso ajudar?`;
+
+  const resets = (events: ChatEvent[]): ChatEvent[] =>
+    events.filter((e) => e.type === 'message_reset');
+
+  it('resets, retries once and delivers only the complete second attempt', async () => {
+    const s = setup([{ text: CUT, finishReason: null }, { text: FULL }], { seen });
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    await s.run();
+    warn.mockRestore();
+
+    expect((s.provider as FakeLlmProvider).calls).toHaveLength(2);
+    expect(resets(s.events)).toEqual([{ type: 'message_reset', data: { reason: 'truncated' } }]);
+    // Partial text went out as tokens before the reset; the full text came after it.
+    const resetAt = s.events.findIndex((e) => e.type === 'message_reset');
+    expect(tokensOf(s.events.slice(0, resetAt))).toContain('restaurante');
+    expect(tokensOf(s.events.slice(resetAt + 1))).toBe(
+      'O **Homus com pão sírio** () é do restaurante *Oriente*. Posso ajudar?',
+    );
+    expect(s.types().at(-1)).toBe('done');
+    // Only the final attempt is persisted, with the marker intact.
+    expect(s.saved().filter((r) => r.role === 'ASSISTANT')).toEqual([
+      { role: 'ASSISTANT', content: { text: FULL, dishIds: [DISH_1] } },
+    ]);
+    // Cards come once, after the reset, from the final attempt only.
+    const cards = s.events.filter((e) => e.type === 'dish_cards');
+    expect(cards).toHaveLength(1);
+    expect(s.events.indexOf(cards[0] as ChatEvent)).toBeGreaterThan(resetAt);
+    expect(s.search.getDishCards).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not leak the cards or ids of the truncated attempt', async () => {
+    const s = setup(
+      [
+        { text: `Veja [[dish:${DISH_1}]] e [[dish:${DISH_2}]] é do *`, finishReason: null },
+        { text: 'Sem pratos desta vez.' },
+      ],
+      { seen: [...seen, [DISH_2, 'Cartola']] },
+    );
+    await s.run();
+    expect(s.events.some((e) => e.type === 'dish_cards')).toBe(false);
+    expect(s.saved().at(-1)).toEqual({
+      role: 'ASSISTANT',
+      content: { text: 'Sem pratos desta vez.' },
+    });
+  });
+
+  it('adds up the usage of both attempts but does not count the retry as an iteration', async () => {
+    const s = setup([{ text: CUT, finishReason: null }, { text: 'Pronto.' }], { seen });
+    const log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    await s.run();
+    const summary = JSON.parse(
+      String(log.mock.calls.map((c) => String(c[0])).find((m) => m.includes('chat_message'))),
+    ) as { iterations: number; outputTokens: number };
+    log.mockRestore();
+    warn.mockRestore();
+    expect(summary.iterations).toBe(1);
+    expect(summary.outputTokens).toBeGreaterThan(Math.ceil('Pronto.'.length / 4));
+  });
+
+  it('fails with LLM_ERROR and persists nothing when both attempts are truncated', async () => {
+    const s = setup(
+      [
+        { text: CUT, finishReason: null },
+        { text: 'Resposta cortada de novo *', finishReason: 'length' },
+      ],
+      { seen },
+    );
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    await s.run();
+    const warned = warn.mock.calls.map((c) => String(c[0]));
+    warn.mockRestore();
+    error.mockRestore();
+
+    expect((s.provider as FakeLlmProvider).calls).toHaveLength(2);
+    expect(s.types()).toEqual([
+      'meta',
+      'token',
+      'message_reset',
+      'token',
+      'message_reset',
+      'error',
+    ]);
+    expect(s.events.at(-1)).toEqual({
+      type: 'error',
+      data: { code: 'LLM_ERROR', message: LLM_ERROR_TEXT },
+    });
+    expect(s.conversations.saveRound).not.toHaveBeenCalled();
+    expect(s.events.some((e) => e.type === 'dish_cards' || e.type === 'done')).toBe(false);
+    const truncated = warned
+      .filter((m) => m.includes('llm_truncated'))
+      .map((m) => JSON.parse(m) as Record<string, unknown>);
+    expect(truncated).toMatchObject([
+      { attempt: 1, reason: 'no_finish_reason', willRetry: true },
+      { attempt: 2, reason: 'finish_reason_length', willRetry: false },
+    ]);
+  });
+
+  it.each(['length', 'content_filter'])('retries on finish_reason %s', async (reason) => {
+    const s = setup([{ text: 'Texto até o limite.', finishReason: reason }, { text: 'Completo.' }]);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    await s.run();
+    warn.mockRestore();
+    expect(resets(s.events)).toHaveLength(1);
+    expect(s.saved().at(-1)).toEqual({ role: 'ASSISTANT', content: { text: 'Completo.' } });
+  });
+
+  it('does not retry a well-formed answer that ended with stop', async () => {
+    const s = setup([{ text: `Veja o **Baião** [[dish:${DISH_1}]] e o *Cartola* agora.` }], {
+      seen,
+    });
+    await s.run();
+    expect((s.provider as FakeLlmProvider).calls).toHaveLength(1);
+    expect(resets(s.events)).toHaveLength(0);
+    expect(s.types().at(-1)).toBe('done');
+  });
+
+  it.each([
+    ['unclosed marker', `Veja [[dish:${DISH_1}`],
+    ['odd bold', 'O **Homus é'],
+    ['open emphasis', 'É do restaurante *'],
+    ['open bracket', 'Veja ('],
+  ])('retries a stop answer that is structurally incomplete (%s)', async (_name, text) => {
+    const s = setup([{ text }, { text: 'Resposta inteira.' }], { seen });
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    await s.run();
+    warn.mockRestore();
+    expect(resets(s.events)).toHaveLength(1);
+    expect(s.saved().at(-1)).toEqual({ role: 'ASSISTANT', content: { text: 'Resposta inteira.' } });
+  });
+
+  it('is not affected by tool calls with finish_reason tool_calls', async () => {
+    const s = setup([
+      {
+        text: 'Vou buscar **',
+        toolCalls: [{ id: 'call_a', name: 'search_dishes', args: { query: 'x' } }],
+      },
+      { text: 'Achei.' },
+    ]);
+    await s.run();
+    expect(resets(s.events)).toHaveLength(0);
+    expect((s.provider as FakeLlmProvider).calls).toHaveLength(2);
+    expect(s.types().at(-1)).toBe('done');
+  });
+
+  it('retries a tool-call turn that ended with finish_reason length', async () => {
+    const s = setup([
+      {
+        toolCalls: [{ id: 'call_a', name: 'search_dishes', args: { query: 'x' } }],
+        finishReason: 'length',
+      },
+      { text: 'Pronto.' },
+    ]);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    await s.run();
+    warn.mockRestore();
+    expect(resets(s.events)).toHaveLength(1);
+    expect(s.events.some((e) => e.type === 'tool_start')).toBe(false);
+    expect(s.saved().filter((r) => r.role === 'TOOL')).toHaveLength(0);
+  });
+
+  it('treats a marker left open at the end of the stream as truncation (parser flush)', async () => {
+    const s = setup([{ text: 'Veja [[dish:abc' }, { text: 'Ok.' }]);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    await s.run();
+    const warned = warn.mock.calls.map((c) => String(c[0])).join('\n');
+    warn.mockRestore();
+    expect(warned).toContain('"reason":"unclosed_dish_marker"');
+  });
+
+  it('logs llm_stream_end for every call with model, finish reason and sizes', async () => {
+    const s = setup([
+      { toolCalls: [{ id: 'call_a', name: 'search_dishes', args: { query: 'x' } }] },
+      { text: 'Achei.' },
+    ]);
+    const log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    await s.run();
+    const ends = log.mock.calls
+      .map((c) => String(c[0]))
+      .filter((m) => m.includes('llm_stream_end'))
+      .map((m) => JSON.parse(m) as Record<string, unknown>);
+    log.mockRestore();
+    expect(ends).toMatchObject([
+      { model: 'fake', finishReason: 'tool_calls', completed: true, textLength: 0, toolCalls: 1 },
+      { model: 'fake', finishReason: 'stop', completed: true, textLength: 6, toolCalls: 0 },
+    ]);
+  });
+});

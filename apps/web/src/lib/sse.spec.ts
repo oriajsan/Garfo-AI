@@ -60,6 +60,13 @@ describe('toChatEvent', () => {
     expect(toChatEvent({ event: 'token', data: '{"text":42}' })).toBeNull();
   });
 
+  it('parses message_reset (older clients drop it as an unknown event, like "telepathy")', () => {
+    expect(toChatEvent({ event: 'message_reset', data: '{"reason":"truncated"}' })).toEqual({
+      type: 'message_reset',
+      data: { reason: 'truncated' },
+    });
+  });
+
   it('works end to end with the parser', () => {
     const [raw] = parseAll([
       'event: tool_start\ndata: {"id":"1","name":"search_dishes","label":"Buscando"}\n\n',

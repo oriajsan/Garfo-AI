@@ -75,21 +75,23 @@ export class OpenAiLlmProvider implements LlmProvider {
    * Once the first chunk is out nothing is ever redone: it would duplicate text.
    */
   async *chat(input: LlmChatInput): AsyncGenerator<LlmStreamChunk> {
-    const stream = await this.openWithFallback(input);
-    yield* adaptOpenAiStream(stream);
+    const { stream, model } = await this.openWithFallback(input);
+    yield* adaptOpenAiStream(stream, model);
   }
 
-  private async openWithFallback(input: LlmChatInput): Promise<AsyncIterable<ChatCompletionChunk>> {
+  private async openWithFallback(
+    input: LlmChatInput,
+  ): Promise<{ stream: AsyncIterable<ChatCompletionChunk>; model: string }> {
     const timeoutMs = this.options.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS;
     const fallback = this.options.fallbackModel;
     try {
-      return await this.openModel(this.model, input, timeoutMs, 1);
+      return { stream: await this.openModel(this.model, input, timeoutMs, 1), model: this.model };
     } catch (error) {
       if (!(error instanceof LlmTimeoutError) || fallback === undefined) throw error;
       try {
         const stream = await this.openModel(fallback, input, timeoutMs, 2);
         this.logFallback(fallback, 'ok');
-        return stream;
+        return { stream, model: fallback };
       } catch (fallbackError) {
         this.logFallback(fallback, fallbackError instanceof LlmTimeoutError ? 'timeout' : 'error');
         if (fallbackError instanceof LlmTimeoutError) {

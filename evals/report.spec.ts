@@ -31,6 +31,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
   retryWaitMs: 0,
   timeouts: 0,
   fallbacks: 0,
+  truncations: 0,
   ...overrides,
 });
 
@@ -140,7 +141,7 @@ describe('LLM calls per case', () => {
   it('shows the counts in the terminal table', () => {
     expect(renderTerminalTable(rs)).toContain('chat  emb');
     expect(renderTerminalTable(rs).split('\n')[1]).toMatch(
-      / {3}3 {2} {2}1 {2} {4}0 {2} {6}0 {2} {7}0$/,
+      / {3}3 {2} {2}1 {2} {4}0 {2} {6}0 {2} {7}0 {2} {5}0$/,
     );
   });
 });
@@ -204,5 +205,17 @@ describe('timeouts and fallbacks', () => {
     expect(md).toContain('| Timeouts | Fallbacks |');
     expect(md).toContain('Timeouts de primeiro chunk:** 2 no total');
     expect(renderTerminalTable(rs)).toContain('timeout  fallback');
+  });
+});
+
+describe('truncations', () => {
+  const rs = [result({ id: 'a', truncations: 2 }), result({ id: 'b' })];
+
+  it('totals them and shows a column per case and a terminal column', () => {
+    expect(summarize(rs, info).totalTruncations).toBe(2);
+    const md = renderMarkdown(rs, info);
+    expect(md).toContain('| Fallbacks | Truncamentos |');
+    expect(md).toContain('llm_truncated`):** 2 no total');
+    expect(renderTerminalTable(rs)).toContain('trunc.');
   });
 });

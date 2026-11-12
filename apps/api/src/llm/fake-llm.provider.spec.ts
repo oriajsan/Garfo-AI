@@ -57,6 +57,18 @@ describe('FakeLlmProvider', () => {
     expect(text).toBe(DEMO_MODE_TEXT);
   });
 
+  it('reports finish_reason stop, tool_calls or the scripted override', async () => {
+    const provider = new FakeLlmProvider([
+      { text: 'oi' },
+      { toolCalls: [{ name: 'view_cart', args: {} }] },
+      { text: 'cortado', finishReason: null },
+    ]);
+    const done = async (): Promise<unknown> => (await collect(provider.chat(input()))).at(-1);
+    expect(await done()).toMatchObject({ finishReason: 'stop', model: 'fake' });
+    expect(await done()).toMatchObject({ finishReason: 'tool_calls' });
+    expect(await done()).toMatchObject({ finishReason: null });
+  });
+
   it('records every input it receives', async () => {
     const provider = new FakeLlmProvider();
     await collect(provider.chat(input({ system: 'a' })));
