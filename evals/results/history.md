@@ -4,10 +4,10 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
 
 ## Resumo
 
-| Versão                                             | Data       | Modelo                | Acerto geral | Latência p50 / p95                                    | Chamadas por caso            | Custo por caso         | O que mudou                                                                 |
-| -------------------------------------------------- | ---------- | --------------------- | ------------ | ----------------------------------------------------- | ---------------------------- | ---------------------- | --------------------------------------------------------------------------- |
-| v1 (prompt da SPEC)                                | 2026-11-12 | gemini-3.5-flash-lite | 90% (18/20)  | 20 892 ms / 37 662 ms (com a pausa do eval, ver nota) | não medido                   | US$ 0 (plano gratuito) | System prompt da seção 6 da SPEC                                            |
-| v2 (tags de característica + critério de conflito) | XX         | gemini-3.5-flash-lite | XX% (XX/20)  | XX ms / XX ms (sem a pausa)                           | XX de chat, XX de embeddings | US$ 0 (plano gratuito) | Descrição de `dietary_tags`; critério de conflito por alternativas; medição |
+| Versão                                             | Data       | Modelo                | Acerto geral                        | Latência p50 / p95                                    | Chamadas por caso              | Custo por caso         | O que mudou                                                                 |
+| -------------------------------------------------- | ---------- | --------------------- | ----------------------------------- | ----------------------------------------------------- | ------------------------------ | ---------------------- | --------------------------------------------------------------------------- |
+| v1 (prompt da SPEC)                                | 2026-11-12 | gemini-3.5-flash-lite | 90% (18/20)                         | 20 892 ms / 37 662 ms (com a pausa do eval, ver nota) | não medido                     | US$ 0 (plano gratuito) | System prompt da seção 6 da SPEC                                            |
+| v2 (tags de característica + critério de conflito) | 2026-11-12 | gemini-3.5-flash-lite | **95% (19/20)** (resultado oficial) | 21 315 ms / 57 522 ms (sem a pausa)                   | 2,8 de chat, 0,8 de embeddings | US$ 0 (plano gratuito) | Descrição de `dietary_tags`; critério de conflito por alternativas; medição |
 
 ## v1: prompt da SPEC
 
@@ -27,10 +27,21 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
   - **Tool `search_dishes`:** a descrição de `dietary_tags` diz que o campo cobre restrições **e** características do prato, com o mapeamento (picante/apimentado=spicy, proteico=high_protein, leve=light, vegetariano=vegetarian, vegano=vegan, sem glúten=gluten_free, sem lactose=lactose_free). Também diz para usar a tag, e não só a `query`.
   - **Eval:** os casos de conflito passam se a resposta citar os dois restaurantes envolvidos **ou** usar termos genéricos de conflito por radical (`esvazi`, `troc`, `outr`...). O carrinho continua sem poder misturar restaurantes.
   - **Medição:** a latência é medida sem a pausa do eval, e o relatório passa a mostrar as chamadas ao LLM e os retries 429/503 por caso.
-- **Resultado:** XX/20 (antes: 18/20).
-- **Casos que mudaram de falha para acerto:** XX.
-- **Casos que regrediram:** XX.
-- **Lição:** XX.
+- **Resultado:** **19/20 (95%)**, antes 18/20. Esse é o resultado oficial. 0 erros de infraestrutura, 0 retries 429/503. Tokens médios por caso: 6 622 de entrada e 226 de saída. Chamadas por caso: 2,8 de chat e 0,8 de embeddings (de 1 nos casos fora do escopo a 7 em `cart-change-quantity`).
+- **Casos que mudaram de falha para acerto:**
+  - `simple-spicy-40`: agora usa `dietary_tags: ["spicy"]`.
+  - `conflict-burger-then-hummus`: passou pelo critério novo.
+- **Casos que regrediram:** `diet-egg-allergy`. Falhou por **timeout do provedor**, não por decisão errada do agente.
+  - O caso fez 1 embedding e 2 chamadas de chat. O `search_dishes` rodou, e a segunda chamada, a que vem depois do resultado da tool, ficou sem resposta até o limite de 90 s por turno do eval.
+  - O agente só grava o turno inteiro no fim. Como o turno foi abortado, o eval não viu nenhuma tool call e reportou também `mustCall:search_dishes: not called`. A causa única é o timeout.
+  - O caso passou na v1, e a descrição de tool alterada na v2 não toca em alergênicos.
+  - **Não foi reclassificado como infraestrutura:** a regra da D6.9 só exclui 429/503, e o número oficial continua 19/20.
+- **Latência:** p50 de 21 s e p95 de 58 s sem a pausa. Ela variou de 3 s a 73 s em casos idênticos de 2 chamadas, sem nenhum 429/503. Isso indica enfileiramento no plano gratuito, não custo do agente.
+  - Medição isolada antes da v3 (`EVAL_ONLY=simple-vegetarian-40 EVAL_REPEAT=5`): 5/5, 2 chamadas de chat por execução, latência de 2,4 s a 21,2 s, p50 5,8 s, p95 21,2 s.
+- **Lição:**
+  - Descrever as características do prato como tags resolveu o caso picante.
+  - Critérios de texto precisam aceitar variações; o nome dos restaurantes é um sinal mais estável que uma lista de verbos.
+  - No plano gratuito, a variância de latência do provedor domina. Os próximos passos atacam isso: `reasoning_effort`, timeout com modelo de fallback e aviso de lentidão no front.
 
 ## Modelo para novas versões (copie e preencha)
 
