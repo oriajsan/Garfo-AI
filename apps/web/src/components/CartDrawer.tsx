@@ -2,7 +2,7 @@
 
 import clsx from 'clsx';
 import { X } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { CartPanel } from './CartPanel';
 import { useModal } from './useModal';
 
@@ -19,8 +19,15 @@ export function CartDrawer({
   const panelRef = useRef<HTMLDivElement>(null);
   useModal(open, onClose, panelRef);
 
+  // React 18 has no typed `inert` prop: toggle the attribute so a closed drawer is not focusable.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    rootRef.current?.toggleAttribute('inert', !open);
+  }, [open]);
+
   return (
     <div
+      ref={rootRef}
       className={clsx('fixed inset-0 z-40 lg:hidden', !open && 'pointer-events-none')}
       aria-hidden={!open}
     >

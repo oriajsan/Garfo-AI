@@ -26,7 +26,7 @@ export function ErrorBanner({
   return (
     <div
       role="alert"
-      className="mx-auto mb-2 flex w-full max-w-3xl items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-100"
+      className="mx-auto mb-2 flex w-full max-w-3xl items-start max-lg:mr-[4.5rem] max-lg:w-auto gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-100"
     >
       <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <p className="flex-1">{friendlyErrorMessage(error.code, error.message)}</p>

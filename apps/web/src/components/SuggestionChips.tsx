@@ -14,7 +14,7 @@ export function SuggestionChips({
 }) {
   return (
     <ul
-      className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2"
+      className="grid w-full max-w-xl grid-cols-1 gap-2 max-sm:pr-[4.5rem] sm:grid-cols-2"
       aria-label="Sugestões de pedido"
     >
       {SUGGESTIONS.map((text) => (
