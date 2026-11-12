@@ -49,6 +49,21 @@ export class OpenAiEmbeddingProvider implements EmbeddingProvider {
       input: texts,
       dimensions: this.dimensions,
     });
-    return [...response.data].sort((a, b) => a.index - b.index).map((item) => item.embedding);
+    if (response.data.length !== texts.length) {
+      throw new Error(
+        `Embedding model "${this.modelId}" returned ${response.data.length} vectors for ${texts.length} inputs. Check LLM_EMBEDDING_MODEL / OPENAI_BASE_URL.`,
+      );
+    }
+    const vectors = [...response.data]
+      .sort((a, b) => a.index - b.index)
+      .map((item) => item.embedding);
+    for (const vector of vectors) {
+      if (vector.length !== this.dimensions) {
+        throw new Error(
+          `Embedding model "${this.modelId}" returned a vector with ${vector.length} dimensions, expected ${this.dimensions} (EMBEDDING_DIMENSIONS). Check LLM_EMBEDDING_MODEL / OPENAI_BASE_URL.`,
+        );
+      }
+    }
+    return vectors;
   }
 }
