@@ -124,8 +124,8 @@ curl -s $API/health
 
 # 2) CORS: o domínio do front é aceito...
 curl -si -X OPTIONS $API/health -H "Origin: $WEB" -H 'Access-Control-Request-Method: GET' | grep -i access-control-allow-origin
-# ...e outro domínio não recebe o header
-curl -si -X OPTIONS $API/health -H 'Origin: https://exemplo.com' -H 'Access-Control-Request-Method: GET' | grep -ci access-control-allow-origin
+# ...e outro domínio não é liberado: o header, se vier, traz a origem do front, nunca https://exemplo.com (esperado: 0)
+curl -si -X OPTIONS $API/health -H 'Origin: https://exemplo.com' -H 'Access-Control-Request-Method: GET' | grep -ci 'access-control-allow-origin: https://exemplo.com'
 
 # 3) Chat em streaming (SSE): deve mostrar meta, tool_start, tool_end, token, dish_cards e done
 SID=$(uuidgen)

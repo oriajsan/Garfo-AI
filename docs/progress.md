@@ -12,7 +12,7 @@
 | 4 — Front e deploy   | `feat/web`         | Não iniciado                                                                                               |
 | 5 — Avaliação e docs | `feat/evals-docs`  | Não iniciado                                                                                               |
 
-**Próximo passo:** verificação final dos critérios de pronto da seção 1 pelo reviewer (em andamento) e depois escrever `docs/morning-report.md`.
+**Sessão autônoma concluída.** Blocos 1–5 aprovados; verificação final do reviewer feita (critérios 2 e 5 cumpridos; 1, 3 e 4 cumpridos localmente, aguardando o dono). **Próximo passo:** tarefas do dono em `docs/morning-report.md` (seção 4), na ordem: chave e `.env`, `db:embed`, chat real, `pnpm eval` e `XX`, deploy, GIF e placeholders, push e PRs em sequência com "Create a merge commit". Se uma nova sessão for aberta antes disso, não há trabalho de código pendente: só ajustes de prompt se o eval real ficar abaixo de 85% (registrar em `evals/results/history.md`).
 
 ## Bloco 1 — Fundação (`feat/foundation`) · 12/11/2026
 
