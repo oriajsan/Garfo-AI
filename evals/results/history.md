@@ -4,10 +4,11 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
 
 ## Resumo
 
-| Versão                                             | Data       | Modelo                | Acerto geral                        | Latência p50 / p95                                    | Chamadas por caso              | Custo por caso         | O que mudou                                                                 |
-| -------------------------------------------------- | ---------- | --------------------- | ----------------------------------- | ----------------------------------------------------- | ------------------------------ | ---------------------- | --------------------------------------------------------------------------- |
-| v1 (prompt da SPEC)                                | 2026-11-12 | gemini-3.5-flash-lite | 90% (18/20)                         | 20 892 ms / 37 662 ms (com a pausa do eval, ver nota) | não medido                     | US$ 0 (plano gratuito) | System prompt da seção 6 da SPEC                                            |
-| v2 (tags de característica + critério de conflito) | 2026-11-12 | gemini-3.5-flash-lite | **95% (19/20)** (resultado oficial) | 21 315 ms / 57 522 ms (sem a pausa)                   | 2,8 de chat, 0,8 de embeddings | US$ 0 (plano gratuito) | Descrição de `dietary_tags`; critério de conflito por alternativas; medição |
+| Versão                                             | Data       | Modelo                                                 | Acerto geral                        | Latência p50 / p95                                    | Chamadas por caso              | Custo por caso         | O que mudou                                                                 |
+| -------------------------------------------------- | ---------- | ------------------------------------------------------ | ----------------------------------- | ----------------------------------------------------- | ------------------------------ | ---------------------- | --------------------------------------------------------------------------- |
+| v1 (prompt da SPEC)                                | 2026-11-12 | gemini-3.5-flash-lite                                  | 90% (18/20)                         | 20 892 ms / 37 662 ms (com a pausa do eval, ver nota) | não medido                     | US$ 0 (plano gratuito) | System prompt da seção 6 da SPEC                                            |
+| v2 (tags de característica + critério de conflito) | 2026-11-12 | gemini-3.5-flash-lite                                  | **95% (19/20)** (resultado oficial) | 21 315 ms / 57 522 ms (sem a pausa)                   | 2,8 de chat, 0,8 de embeddings | US$ 0 (plano gratuito) | Descrição de `dietary_tags`; critério de conflito por alternativas; medição |
+| v3 (timeout com fallback + reasoning_effort)       | 2026-11-12 | gemini-3.5-flash-lite (fallback gemini-3.1-flash-lite) | **95% (19/20)**                     | 8 183 ms / 31 855 ms (sem a pausa)                    | 2,8 de chat, 0,9 de embeddings | US$ 0 (plano gratuito) | Timeout de 15 s no primeiro chunk com fallback; `reasoning_effort=minimal`  |
 
 ## v1: prompt da SPEC
 
@@ -43,17 +44,21 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
   - Critérios de texto precisam aceitar variações; o nome dos restaurantes é um sinal mais estável que uma lista de verbos.
   - No plano gratuito, a variância de latência do provedor domina. Os próximos passos atacam isso: `reasoning_effort`, timeout com modelo de fallback e aviso de lentidão no front.
 
-## v3 (preparação): latência do plano gratuito
+## v3: latência do plano gratuito (timeout com fallback)
 
-- **O que mudou:**
-  - `reasoning_effort=minimal` no Gemini;
-  - timeout de 15 s até o primeiro chunk, com uma repetição no `gemini-3.1-flash-lite`;
-  - aviso de lentidão no front.
-    Prompt e tools iguais aos da v2.
-- **Medição isolada** (`EVAL_ONLY=simple-vegetarian-40 EVAL_REPEAT=5`, todas 5/5): antes, p50 5,8 s e p95 21,2 s (faixa 2,4 a 21,2 s); depois, p50 9,6 s e p95 16,0 s (faixa 8,6 a 16,0 s), sem timeouts nem fallback. Diferença dentro do ruído.
-- **Resultado:** XX/20 (antes: 19/20).
-- **Timeouts e fallbacks no eval completo:** XX.
-- **Lição:** XX.
+- **O que mudou:** `reasoning_effort=minimal` no Gemini; timeout de 15 s até o **primeiro chunk** de cada chamada de chat, com uma repetição no `gemini-3.1-flash-lite` (`LLM_FALLBACK_MODEL`); aviso de lentidão no front. Prompt e tools iguais aos da v2.
+- **Escopo do timeout:** ele vale **só para o primeiro chunk** (abertura do stream mais o primeiro token). Depois que a resposta começa a chegar, nada é cortado nem refeito, para não duplicar texto. Uma resposta que começa rápido e demora para terminar não é afetada.
+- **Resultado:** **19/20 (95%)**, igual à v2. 0 erros de infraestrutura, 0 retries 429/503. Tokens médios por caso: 6 652 de entrada e 224 de saída. Chamadas por caso: 2,8 de chat e 0,9 de embeddings.
+- **Casos que mudaram de falha para acerto:** `diet-egg-allergy` (timeout do provedor na v2).
+- **Casos que regrediram:** `simple-dessert-15`, com `LLM_TIMEOUT` no modelo principal **e** no fallback. É uma falha do provedor, mas conta como falha do agente (D6.15). O relatório também acusou `search_dishes not called`. O caso fez 1 embedding, então a busca provavelmente rodou antes do timeout. É o mesmo efeito da persistência só no fim do turno visto na v2, corrigido para a execução final com o rastro parcial de tools.
+- **Latência:** **o p50 caiu de 21,3 s (v2) para 8,2 s e o p95 de 57,5 s para 31,9 s.** A melhora é atribuída ao timeout com fallback: chamadas que ficariam presas na fila do plano gratuito passam a ser cortadas em 15 s e repetidas em outro modelo.
+  - **Ressalvas:**
+    - Os contadores de timeout e fallback da v3 marcaram 0, mas o log mostrou fallback em uso. Os contadores não contavam turnos que falharam (corrigido para a execução final), então não sabemos quantas chamadas o fallback salvou.
+    - A fila do provedor varia com o horário.
+    - A medição isolada do `reasoning_effort` não mostrou efeito, o que reforça a atribuição ao timeout com fallback, mas não a prova.
+- **Lição:**
+  - Com provedor gratuito, cortar a cauda da latência (timeout no primeiro chunk com um modelo alternativo) rendeu mais que ajustar o raciocínio do modelo.
+  - Métricas de infraestrutura precisam ser contadas também nos turnos que falham, senão escondem justamente os casos que importam.
 
 ## Modelo para novas versões (copie e preencha)
 
