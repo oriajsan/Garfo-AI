@@ -9,11 +9,17 @@ import {
 import { adaptOpenAiStream, toOpenAiMessages, toOpenAiTools } from './openai.mapping';
 
 const TEMPERATURE = 0.3;
+/**
+ * Thinking models behind compatible endpoints (e.g. gemini-2.5-flash) count reasoning tokens
+ * inside `max_tokens`; the default cap (800) would truncate answers. Raised only for them.
+ */
+export const COMPATIBLE_MIN_MAX_TOKENS = 4096;
 
 export class OpenAiLlmProvider implements LlmProvider {
   constructor(
     private readonly client: OpenAI,
     private readonly model: string,
+    private readonly compatibleEndpoint = false,
   ) {}
 
   async *chat(input: LlmChatInput): AsyncGenerator<LlmStreamChunk> {
@@ -25,7 +31,9 @@ export class OpenAiLlmProvider implements LlmProvider {
         stream: true,
         stream_options: { include_usage: true },
         temperature: TEMPERATURE,
-        max_tokens: input.maxTokens,
+        max_tokens: this.compatibleEndpoint
+          ? Math.max(input.maxTokens, COMPATIBLE_MIN_MAX_TOKENS)
+          : input.maxTokens,
       },
       { signal: input.signal },
     );

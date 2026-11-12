@@ -1,6 +1,6 @@
 import { type OpenAI } from 'openai';
 import { VECTOR_DIMENSIONS } from '../config/env';
-import { OpenAiEmbeddingProvider } from './openai.provider';
+import { OpenAiEmbeddingProvider, OpenAiLlmProvider } from './openai.provider';
 
 function clientReturning(data: { index: number; embedding: number[] }[]): {
   client: OpenAI;
@@ -41,5 +41,22 @@ describe('OpenAiEmbeddingProvider', () => {
     await expect(new OpenAiEmbeddingProvider(client, 'm').embed(['a', 'b'])).rejects.toThrow(
       /1 vectors for 2 inputs/,
     );
+  });
+});
+
+describe('OpenAiLlmProvider max_tokens', () => {
+  async function sentMaxTokens(compatible: boolean): Promise<number> {
+    const create = jest.fn().mockResolvedValue((async function* () {})());
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+    const provider = new OpenAiLlmProvider(client, 'm', compatible);
+    for await (const _ of provider.chat({ system: 's', messages: [], tools: [], maxTokens: 800 })) {
+      void _;
+    }
+    return (create.mock.calls[0] as [{ max_tokens: number }])[0].max_tokens;
+  }
+
+  it('keeps the configured cap on OpenAI and raises it on compatible endpoints', async () => {
+    expect(await sentMaxTokens(false)).toBe(800);
+    expect(await sentMaxTokens(true)).toBe(4096);
   });
 });
