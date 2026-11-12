@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { NestFactory } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
 import { z } from 'zod';
 import { AppModule } from '../apps/api/src/app.module';
 import { CartService } from '../apps/api/src/cart/cart.service';
 import { AgentService } from '../apps/api/src/chat/agent.service';
 import { ConversationRepository } from '../apps/api/src/chat/conversation.repository';
+import { ConfigService } from '../apps/api/src/config/config.service';
 import { validateEnv } from '../apps/api/src/config/env';
+import { createEmbeddingProvider, createLlmProvider } from '../apps/api/src/llm/llm.factory';
+import { EMBEDDING_PROVIDER, LLM_PROVIDER } from '../apps/api/src/llm/llm.tokens';
 import { PrismaService } from '../apps/api/src/prisma/prisma.service';
 import { collectDishRefs } from '../apps/api/src/tools/tool.format';
 import {
@@ -28,6 +31,7 @@ import {
   type CaseResult,
   type RunInfo,
 } from './report';
+import { PacedEmbeddingProvider, PacedLlmProvider, parseEvalDelayMs, RateGate } from './rate-gate';
 import { evalCasesFileSchema, type EvalCase } from './schema';
 
 /**
@@ -65,11 +69,12 @@ function describeRun(): RunInfo {
   };
 }
 
-function printBanner(info: RunInfo, caseCount: number): void {
+function printBanner(info: RunInfo, caseCount: number, delayMs: number): void {
   console.log('Garfo AI: avaliação do agente');
   console.log(`  Provedor: ${info.provider}`);
   console.log(`  Modelo:   ${info.model}`);
   console.log(`  Casos:    ${caseCount}`);
+  console.log(`  Pausa entre chamadas ao provedor: ${delayMs} ms (EVAL_DELAY_MS)`);
   if (info.provider === 'openai') {
     console.log('');
     console.log('  ATENÇÃO: LLM_PROVIDER=openai. Esta execução chama a API real e TEM CUSTO.');
@@ -238,15 +243,33 @@ function safeParse(json: string): unknown {
 async function main(): Promise<void> {
   const cases = loadCases();
   const info = describeRun();
-  printBanner(info, cases.length);
+  const delayMs = parseEvalDelayMs(process.env.EVAL_DELAY_MS, info.provider);
+  printBanner(info, cases.length, delayMs);
 
-  const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error'] });
+  // One gate shared by chat and embeddings, wrapping the production providers (their 429/503
+  // retry stays underneath). Only the eval is paced; the API code is untouched.
+  const gate = new RateGate(delayMs);
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(LLM_PROVIDER)
+    .useFactory({
+      inject: [ConfigService],
+      factory: (config: ConfigService) =>
+        new PacedLlmProvider(createLlmProvider(config.all()), gate),
+    })
+    .overrideProvider(EMBEDDING_PROVIDER)
+    .useFactory({
+      inject: [ConfigService],
+      factory: (config: ConfigService) =>
+        new PacedEmbeddingProvider(createEmbeddingProvider(config.all()), gate),
+    })
+    .compile();
+  await moduleRef.init();
   try {
     const services: Services = {
-      agent: app.get(AgentService),
-      conversations: app.get(ConversationRepository),
-      carts: app.get(CartService),
-      prisma: app.get(PrismaService),
+      agent: moduleRef.get(AgentService),
+      conversations: moduleRef.get(ConversationRepository),
+      carts: moduleRef.get(CartService),
+      prisma: moduleRef.get(PrismaService),
     };
 
     const dishes = await services.prisma.dish.findMany({ include: { restaurant: true } });
@@ -324,7 +347,7 @@ async function main(): Promise<void> {
     console.log(`\nRelatório gravado em evals/results/${fileName}`);
     if (info.provider === 'fake') console.log(`Aviso: ${FAKE_WARNING}`);
   } finally {
-    await app.close();
+    await moduleRef.close();
   }
 }
 
