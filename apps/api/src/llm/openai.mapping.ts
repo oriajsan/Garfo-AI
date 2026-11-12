@@ -2,10 +2,16 @@ import { randomUUID } from 'node:crypto';
 import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall,
   ChatCompletionTool,
 } from 'openai/resources/chat/completions';
 import { sanitizeJsonSchema } from './schema-sanitizer';
-import { type ChatMessage, type LlmStreamChunk, type ToolDefinition } from './llm.types';
+import {
+  type ChatMessage,
+  type JsonValue,
+  type LlmStreamChunk,
+  type ToolDefinition,
+} from './llm.types';
 
 /** Internal `ChatMessage[]` -> OpenAI messages, with the system prompt first. */
 export function toOpenAiMessages(
@@ -25,10 +31,14 @@ export function toOpenAiMessages(
           content: message.content === '' && message.toolCalls?.length ? null : message.content,
           ...(message.toolCalls?.length
             ? {
-                tool_calls: message.toolCalls.map((call) => ({
+                tool_calls: message.toolCalls.map((call): ChatCompletionMessageToolCall => ({
                   id: call.id,
                   type: 'function' as const,
                   function: { name: call.name, arguments: call.argsJson },
+                  // Only present on providers that send it (Gemini); OpenAI payload is unchanged.
+                  ...(call.extraContent !== undefined
+                    ? ({ extra_content: call.extraContent } as object)
+                    : {}),
                 })),
               }
             : {}),
@@ -62,10 +72,17 @@ export function toOpenAiTools(tools: ToolDefinition[]): ChatCompletionTool[] {
  * id and name, the following ones carry slices of the JSON arguments. This joins them.
  */
 /** `index` is required by the OpenAI types but missing from some compatible endpoints. */
-type ToolCallDelta = Omit<ChatCompletionChunk.Choice.Delta.ToolCall, 'index'> & { index?: number };
+type ToolCallDelta = Omit<ChatCompletionChunk.Choice.Delta.ToolCall, 'index'> & {
+  index?: number;
+  /** Gemini's thought signature: `{ google: { thought_signature } }`. Opaque to us. */
+  extra_content?: JsonValue;
+};
 
 export class ToolCallAggregator {
-  private readonly calls = new Map<number, { id: string; name: string; args: string }>();
+  private readonly calls = new Map<
+    number,
+    { id: string; name: string; args: string; extra?: JsonValue }
+  >();
 
   add(deltas: ToolCallDelta[]): void {
     for (const delta of deltas) {
@@ -74,6 +91,9 @@ export class ToolCallAggregator {
       if (delta.id) current.id = delta.id;
       if (delta.function?.name) current.name += delta.function.name;
       if (delta.function?.arguments) current.args += delta.function.arguments;
+      if (delta.extra_content !== undefined && delta.extra_content !== null) {
+        current.extra = delta.extra_content;
+      }
       this.calls.set(index, current);
     }
   }
@@ -98,6 +118,7 @@ export class ToolCallAggregator {
         id: call.id || `call_${randomUUID()}`,
         name: call.name,
         argsJson: call.args === '' ? '{}' : call.args,
+        ...(call.extra !== undefined ? { extraContent: call.extra } : {}),
       }));
   }
 }

@@ -93,7 +93,12 @@ export class AgentService {
             const safe = parser.push(chunk.delta);
             if (safe) emit({ type: 'token', data: { text: safe } });
           } else if (chunk.type === 'tool_call') {
-            toolCalls.push({ id: chunk.id, name: chunk.name, argsJson: chunk.argsJson });
+            toolCalls.push({
+              id: chunk.id,
+              name: chunk.name,
+              argsJson: chunk.argsJson,
+              ...(chunk.extraContent !== undefined ? { extraContent: chunk.extraContent } : {}),
+            });
           } else {
             usage.inputTokens += chunk.usage.inputTokens;
             usage.outputTokens += chunk.usage.outputTokens;

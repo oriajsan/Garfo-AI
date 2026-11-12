@@ -10,7 +10,7 @@ const row = (role: StoredMessage['role'], content: unknown): StoredMessage => ({
 const user = (text: string) => row('USER', { text });
 const assistant = (
   text: string,
-  toolCalls?: Array<{ id: string; name: string; argsJson: string }>,
+  toolCalls?: Array<{ id: string; name: string; argsJson: string; extraContent?: unknown }>,
 ) => row('ASSISTANT', { text, ...(toolCalls ? { toolCalls } : {}) });
 const tool = (toolCallId: string, name = 'search_dishes') =>
   row('TOOL', { toolCallId, name, result: { ok: true } });
@@ -63,5 +63,36 @@ describe('toHistory', () => {
     expect(toHistory([user('ok'), row('ASSISTANT', { nope: true }), row('USER', 42)])).toEqual([
       { role: 'user', content: 'ok' },
     ]);
+  });
+});
+
+describe('toHistory with thought signatures', () => {
+  const extraContent = { google: { thought_signature: 'sig-abc==' } };
+
+  it('rehydrates extraContent from the stored row untouched', () => {
+    const history = toHistory([
+      user('oi'),
+      assistant('', [{ ...call('c1'), extraContent }, call('c2')]),
+      tool('c1'),
+      tool('c2'),
+    ]);
+    const assistantMsg = history[1];
+    expect(assistantMsg).toMatchObject({ role: 'assistant' });
+    if (assistantMsg?.role !== 'assistant') throw new Error('unexpected role');
+    expect(assistantMsg.toolCalls?.[0]).toEqual({ ...call('c1'), extraContent });
+    expect(assistantMsg.toolCalls?.[1]).toEqual(call('c2'));
+  });
+
+  it('round-trips through JSON serialisation (Message.content)', () => {
+    const stored = JSON.parse(
+      JSON.stringify({ text: '', toolCalls: [{ ...call('c1'), extraContent }] }),
+    ) as unknown;
+    const history = toHistory([user('oi'), row('ASSISTANT', stored), tool('c1')]);
+    expect(history[1]).toMatchObject({ toolCalls: [{ extraContent }] });
+  });
+
+  it('still loads old rows without the field', () => {
+    const history = toHistory([user('oi'), assistant('', [call('c1')]), tool('c1')]);
+    expect(history).toHaveLength(3);
   });
 });

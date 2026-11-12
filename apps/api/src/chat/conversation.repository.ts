@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { type Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { PrismaService } from '../prisma/prisma.service';
-import { type ChatMessage, type ToolCall } from '../llm/llm.types';
+import { type ChatMessage, type JsonValue, type ToolCall } from '../llm/llm.types';
 import { collectDishRefs } from '../tools/tool.format';
 
 export const HISTORY_LIMIT = 20;
@@ -16,11 +16,22 @@ export type MessageRecord =
     }
   | { role: 'TOOL'; content: { toolCallId: string; name: string; result: unknown } };
 
+const jsonValue: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValue), z.record(jsonValue)]),
+);
+
 const userContent = z.object({ text: z.string() });
 const assistantContent = z.object({
   text: z.string(),
   toolCalls: z
-    .array(z.object({ id: z.string(), name: z.string(), argsJson: z.string() }))
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        argsJson: z.string(),
+        extraContent: jsonValue.optional(),
+      }),
+    )
     .optional(),
   dishIds: z.array(z.string()).optional(),
 });

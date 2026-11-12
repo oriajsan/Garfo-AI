@@ -1,10 +1,20 @@
 /** Provider-agnostic types (SPEC section 5). The agent only knows these. */
 
+/** Opaque JSON, passed through untouched. */
+export type JsonValue =
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 export interface ToolCall {
   id: string;
   name: string;
   /** Raw JSON string exactly as the model produced it; validated later with Zod. */
   argsJson: string;
+  /**
+   * Provider metadata of the call, kept opaque and sent back as received. Gemini 3 puts its
+   * thought signature here (`{ google: { thought_signature } }`) and rejects the next request
+   * when it is missing.
+   */
+  extraContent?: JsonValue;
 }
 
 export type ChatMessage =
@@ -26,7 +36,7 @@ export interface LlmUsage {
 
 export type LlmStreamChunk =
   | { type: 'text'; delta: string }
-  | { type: 'tool_call'; id: string; name: string; argsJson: string }
+  | { type: 'tool_call'; id: string; name: string; argsJson: string; extraContent?: JsonValue }
   | { type: 'done'; usage: LlmUsage };
 
 export interface LlmChatInput {

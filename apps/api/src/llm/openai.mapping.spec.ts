@@ -218,3 +218,73 @@ describe('adaptOpenAiStream', () => {
     ]);
   });
 });
+
+describe('Gemini thought signatures (extra_content)', () => {
+  const signature = { google: { thought_signature: 'sig-abc==' } };
+
+  it('captures extra_content from the stream and sends it back in the next request', async () => {
+    const withExtra = {
+      tool_calls: [
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'search_dishes', arguments: '{"q":' },
+          extra_content: signature,
+        },
+      ],
+    } as unknown as ChatCompletionChunk.Choice.Delta;
+    const out = await collect([
+      chunk(withExtra),
+      chunk({ tool_calls: [{ index: 0, function: { arguments: '"x"}' } }] }),
+      chunk({
+        tool_calls: [
+          { id: 'call_2', function: { name: 'add_to_cart', arguments: '{}' } },
+        ] as unknown as ChatCompletionChunk.Choice.Delta.ToolCall[],
+      }),
+    ]);
+    const calls = out.filter((c) => c.type === 'tool_call');
+    expect(calls[0]).toMatchObject({
+      id: 'call_1',
+      argsJson: '{"q":"x"}',
+      extraContent: signature,
+    });
+    expect(calls[1]).not.toHaveProperty('extraContent');
+
+    const [first] = calls;
+    if (first?.type !== 'tool_call') throw new Error('expected a tool call');
+    const messages = toOpenAiMessages('sys', [
+      { role: 'user', content: 'oi' },
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [
+          {
+            id: first.id,
+            name: first.name,
+            argsJson: first.argsJson,
+            extraContent: first.extraContent,
+          },
+          { id: 'call_2', name: 'add_to_cart', argsJson: '{}' },
+        ],
+      },
+    ]);
+    expect(messages[2]).toMatchObject({
+      tool_calls: [{ id: 'call_1', extra_content: signature }, { id: 'call_2' }],
+    });
+    const second = (messages[2] as { tool_calls: object[] }).tool_calls[1];
+    expect(second).not.toHaveProperty('extra_content');
+  });
+
+  it('keeps the OpenAI payload byte for byte when there is no extra_content', () => {
+    const messages = toOpenAiMessages('sys', [
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 'c1', name: 'search_dishes', argsJson: '{"a":1}' }],
+      },
+    ]);
+    expect(JSON.stringify(messages[1])).toBe(
+      '{"role":"assistant","content":null,"tool_calls":[{"id":"c1","type":"function","function":{"name":"search_dishes","arguments":"{\\"a\\":1}"}}]}',
+    );
+  });
+});
