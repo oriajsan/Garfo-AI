@@ -16,6 +16,7 @@ import {
   isInfrastructureFailure,
   type DishFacts,
   type Observation,
+  type RunFailure,
 } from './checks';
 import {
   DEFAULT_PRICE_INPUT_USD_PER_MTOK,
@@ -118,6 +119,7 @@ async function runCase(
   const { agent, conversations, carts, prisma } = services;
   const sessionId = randomUUID();
   const runErrors: string[] = [];
+  const failure: RunFailure = { errorCodes: [], httpStatuses: [] };
   const cardIdsPerReply: string[][] = [];
   const cartDishIdsPerTurn: string[][] = [];
   const latenciesMs: number[] = [];
@@ -136,9 +138,10 @@ async function runCase(
           { sessionId, conversationId, message },
           (event) => {
             if (event.type === 'dish_cards') for (const d of event.data.dishes) cards.add(d.id);
-            else if (event.type === 'error')
+            else if (event.type === 'error') {
+              failure.errorCodes.push(event.data.code);
               runErrors.push(`${event.data.code}: ${event.data.message}`);
-            else if (event.type === 'done') {
+            } else if (event.type === 'done') {
               done = true;
               inputTokens += event.data.usage.inputTokens;
               outputTokens += event.data.usage.outputTokens;
@@ -148,6 +151,8 @@ async function runCase(
           abort.signal,
         );
       } catch (error) {
+        const status = (error as { status?: unknown } | null)?.status;
+        if (typeof status === 'number') failure.httpStatuses.push(status);
         runErrors.push(error instanceof Error ? error.message : String(error));
       } finally {
         clearTimeout(timer);
@@ -210,7 +215,7 @@ async function runCase(
       id: evalCase.id,
       category: evalCase.category,
       passed: outcome.passed,
-      infra: isInfrastructureFailure(runErrors),
+      infra: isInfrastructureFailure(failure),
       checks: outcome.checks,
       inputTokens,
       outputTokens,

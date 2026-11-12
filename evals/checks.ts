@@ -55,12 +55,24 @@ export interface CaseOutcome {
   checks: CheckResult[];
 }
 
+/** Structured facts about how a run failed; never parsed out of message text. */
+export interface RunFailure {
+  /** `event.data.code` of every `error` event of the run. */
+  errorCodes: string[];
+  /** HTTP `status` of every exception (APIError, LlmOverloadedError) of the run. */
+  httpStatuses: number[];
+}
+
 /**
- * A run that ended because the provider was overloaded or rate limited (LLM_OVERLOADED, or a raw
- * 429/503) says nothing about the agent: it is classified as infrastructure, not as a failure.
+ * A run that ended because the provider was overloaded or rate limited says nothing about the
+ * agent: it is infrastructure, not a failure. Only the `LLM_OVERLOADED` code or an HTTP status of
+ * 429/503 count; message text is never inspected.
  */
-export function isInfrastructureFailure(runErrors: string[]): boolean {
-  return runErrors.some((error) => /^LLM_OVERLOADED\b/.test(error) || /\b(429|503)\b/.test(error));
+export function isInfrastructureFailure(failure: RunFailure): boolean {
+  return (
+    failure.errorCodes.includes('LLM_OVERLOADED') ||
+    failure.httpStatuses.some((status) => status === 429 || status === 503)
+  );
 }
 
 const reais = (cents: number): string => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;

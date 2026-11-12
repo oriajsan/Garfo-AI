@@ -46,13 +46,27 @@ const failed = (c: EvalCase, o: Observation): string[] =>
     .map((check) => check.name);
 
 describe('isInfrastructureFailure', () => {
-  it('flags LLM_OVERLOADED and raw 429/503 errors only', () => {
-    expect(isInfrastructureFailure(['LLM_OVERLOADED: sobrecarregado'])).toBe(true);
-    expect(isInfrastructureFailure(['429 Too Many Requests'])).toBe(true);
-    expect(isInfrastructureFailure(['503 upstream'])).toBe(true);
-    expect(isInfrastructureFailure(['LLM_ERROR: x'])).toBe(false);
-    expect(isInfrastructureFailure(['400 bad request'])).toBe(false);
-    expect(isInfrastructureFailure([])).toBe(false);
+  const failure = (errorCodes: string[], httpStatuses: number[] = []) => ({
+    errorCodes,
+    httpStatuses,
+  });
+
+  it('flags LLM_OVERLOADED and HTTP 429/503 statuses', () => {
+    expect(isInfrastructureFailure(failure(['LLM_OVERLOADED']))).toBe(true);
+    expect(isInfrastructureFailure(failure([], [429]))).toBe(true);
+    expect(isInfrastructureFailure(failure([], [503]))).toBe(true);
+    expect(isInfrastructureFailure(failure(['LLM_ERROR'], [503]))).toBe(true);
+  });
+
+  it('never matches numbers in message text, only structured fields', () => {
+    // The messages below would have fooled a regex; only code/status are inspected now.
+    const messages = ['VALIDATION_ERROR: preço 4290', 'R$ 429', 'id 15034-abc'];
+    expect(messages).toHaveLength(3);
+    expect(isInfrastructureFailure(failure(['VALIDATION_ERROR']))).toBe(false);
+    expect(isInfrastructureFailure(failure(['LLM_ERROR']))).toBe(false);
+    expect(isInfrastructureFailure(failure([], [400]))).toBe(false);
+    expect(isInfrastructureFailure(failure([], [500, 4290]))).toBe(false);
+    expect(isInfrastructureFailure(failure([]))).toBe(false);
   });
 });
 
