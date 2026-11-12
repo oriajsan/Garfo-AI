@@ -40,4 +40,20 @@ describe('sanitizeJsonSchema', () => {
       },
     });
   });
+
+  it('sanitizes inside anyOf and a root-level nullable type array', () => {
+    expect(
+      sanitizeJsonSchema({
+        type: ['object', 'null'],
+        anyOf: [
+          { type: 'string', format: 'uuid' },
+          { type: 'number', exclusiveMinimum: 0 },
+        ],
+      }),
+    ).toEqual({
+      type: 'object',
+      nullable: true,
+      anyOf: [{ type: 'string' }, { type: 'number' }],
+    });
+  });
 });

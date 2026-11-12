@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
@@ -60,10 +61,13 @@ export function toOpenAiTools(tools: ToolDefinition[]): ChatCompletionTool[] {
  * Tool calls arrive split across many deltas, identified by `index`: the first delta carries
  * id and name, the following ones carry slices of the JSON arguments. This joins them.
  */
+/** `index` is required by the OpenAI types but missing from some compatible endpoints. */
+type ToolCallDelta = Omit<ChatCompletionChunk.Choice.Delta.ToolCall, 'index'> & { index?: number };
+
 export class ToolCallAggregator {
   private readonly calls = new Map<number, { id: string; name: string; args: string }>();
 
-  add(deltas: ChatCompletionChunk.Choice.Delta.ToolCall[]): void {
+  add(deltas: ToolCallDelta[]): void {
     for (const delta of deltas) {
       const index = this.resolveIndex(delta);
       const current = this.calls.get(index) ?? { id: '', name: '', args: '' };
@@ -78,7 +82,7 @@ export class ToolCallAggregator {
    * Some compatible endpoints (Gemini) omit `index`. A delta carrying an id or name then starts a
    * new call; one without continues the latest call.
    */
-  private resolveIndex(delta: ChatCompletionChunk.Choice.Delta.ToolCall): number {
+  private resolveIndex(delta: ToolCallDelta): number {
     if (typeof delta.index === 'number') return delta.index;
     if (delta.id || delta.function?.name || this.calls.size === 0) return this.calls.size;
     return this.calls.size - 1;
@@ -88,9 +92,10 @@ export class ToolCallAggregator {
   flush(): LlmStreamChunk[] {
     return [...this.calls.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([index, call]) => ({
+      .map(([, call]) => ({
         type: 'tool_call' as const,
-        id: call.id || `call_${index}`,
+        // Unique across loop iterations so ids never collide in the history.
+        id: call.id || `call_${randomUUID()}`,
         name: call.name,
         argsJson: call.args === '' ? '{}' : call.args,
       }));

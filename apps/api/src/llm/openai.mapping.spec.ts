@@ -113,7 +113,75 @@ describe('ToolCallAggregator', () => {
   });
 });
 
+describe('ToolCallAggregator without index (compatible endpoints)', () => {
+  const run = (...batches: Parameters<ToolCallAggregator['add']>[0][]): LlmStreamChunk[] => {
+    const aggregator = new ToolCallAggregator();
+    batches.forEach((batch) => aggregator.add(batch));
+    return aggregator.flush();
+  };
+
+  it('builds one call from a single delta', () => {
+    expect(
+      run([{ id: 'a', function: { name: 'search_dishes', arguments: '{"query":"x"}' } }]),
+    ).toEqual([{ type: 'tool_call', id: 'a', name: 'search_dishes', argsJson: '{"query":"x"}' }]);
+  });
+
+  it('builds two calls, in order, from two deltas with id and name', () => {
+    const out = run(
+      [{ id: 'a', function: { name: 'view_cart', arguments: '' } }],
+      [{ id: 'b', function: { name: 'clear_cart', arguments: '' } }],
+    );
+    expect(out.map((c) => (c.type === 'tool_call' ? c.name : ''))).toEqual([
+      'view_cart',
+      'clear_cart',
+    ]);
+  });
+
+  it('appends an arguments-only delta to the latest call', () => {
+    expect(
+      run(
+        [{ id: 'a', function: { name: 'search_dishes', arguments: '{"que' } }],
+        [{ function: { arguments: 'ry":"x"}' } }],
+      ),
+    ).toEqual([{ type: 'tool_call', id: 'a', name: 'search_dishes', argsJson: '{"query":"x"}' }]);
+  });
+
+  it('starts at call 0 when the first delta has no index, id or name', () => {
+    expect(run([{ function: { arguments: '{}' } }])).toHaveLength(1);
+  });
+
+  it('gives an empty id a unique fallback', () => {
+    const first = run([{ id: '', function: { name: 'view_cart' } }])[0];
+    const second = run([{ id: '', function: { name: 'view_cart' } }])[0];
+    const ids = [first, second].map((c) => (c?.type === 'tool_call' ? c.id : ''));
+    expect(ids[0]).toMatch(/^call_.+/);
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  it('keeps interleaved OpenAI indexes 0 and 1 apart', () => {
+    expect(
+      run(
+        [{ index: 0, id: 'a', function: { name: 'search_dishes', arguments: '{"q' } }],
+        [{ index: 1, id: 'b', function: { name: 'view_cart', arguments: '' } }],
+        [{ index: 0, function: { arguments: '":1}' } }],
+      ),
+    ).toEqual([
+      { type: 'tool_call', id: 'a', name: 'search_dishes', argsJson: '{"q":1}' },
+      { type: 'tool_call', id: 'b', name: 'view_cart', argsJson: '{}' },
+    ]);
+  });
+});
+
 describe('adaptOpenAiStream', () => {
+  it('treats usage without prompt_tokens as zero', async () => {
+    const odd = chunk({ content: 'x' });
+    odd.usage = { completion_tokens: 3 } as unknown as NonNullable<typeof odd.usage>;
+    expect((await collect([odd])).at(-1)).toEqual({
+      type: 'done',
+      usage: { inputTokens: 0, outputTokens: 3 },
+    });
+  });
+
   it('emits text deltas, then complete tool calls, then done with usage', async () => {
     const chunks = await collect([
       chunk({ role: 'assistant', content: 'Olá' }),
