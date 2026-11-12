@@ -10,6 +10,7 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
 | v2 (tags de característica + critério de conflito) | 2026-11-12 | gemini-3.5-flash-lite                                  | **95% (19/20)** (resultado oficial) | 21 315 ms / 57 522 ms (sem a pausa)                   | 2,8 de chat, 0,8 de embeddings | US$ 0 (plano gratuito) | Descrição de `dietary_tags`; critério de conflito por alternativas; medição |
 | v3 (timeout com fallback + reasoning_effort)       | 2026-11-12 | gemini-3.5-flash-lite (fallback gemini-3.1-flash-lite) | **95% (19/20)**                     | 8 183 ms / 31 855 ms (sem a pausa)                    | 2,8 de chat, 0,9 de embeddings | US$ 0 (plano gratuito) | Timeout de 15 s no primeiro chunk com fallback; `reasoning_effort=minimal`  |
 | v4 (final, oficial)                                | 2026-11-12 | gemini-3.5-flash-lite (fallback gemini-3.1-flash-lite) | **90% (18/20)**                     | 7 372 ms / 27 505 ms (sem a pausa)                    | 2,7 de chat, 0,9 de embeddings | US$ 0 (plano gratuito) | Contadores e rastro parcial corrigidos no eval; prompt e tools iguais à v3  |
+| v5 (após a correção de truncamento)                | 2026-11-12 | gemini-3.5-flash-lite (fallback gemini-3.1-flash-lite) | **100% (20/20)**                    | 9 725 ms / 18 392 ms (sem a pausa)                    | 3,0 de chat, 0,8 de embeddings | US$ 0 (plano gratuito) | Detecção e repetição de respostas truncadas (D6.18); prompt e tools iguais  |
 
 ## v1: prompt da SPEC
 
@@ -100,6 +101,19 @@ O **Homus com pão sírio** ([[dish:e9e0a7df-235e-5305-8629-7c18beb6ae35]]) é d
 - **Lição:**
   - Medir o provedor direito mudou a leitura dos números. O fallback salva casos de verdade (2 de 3 usos).
   - No plano gratuito ainda sobra cauda de latência e timeout duplo, que pesam no resultado de um eval pequeno.
+
+## v5: execução após a correção de truncamento (última execução)
+
+- **O que mudou:** prompt, tools e configuração iguais à v4. Entrou a detecção de respostas truncadas: stream sem `finish_reason` válido, ou com texto estruturalmente incompleto, é repetido uma vez e o front recebe `message_reset` (D6.18). A mitigação P-SEC-1 (`images.unoptimized`) só afeta o front e não influi no eval.
+- **Resultado:** **20/20 (100%)** (antes: 18/20). 0 erros de infraestrutura. Tokens médios por caso: 7 277 de entrada e 260 de saída. Chamadas por caso: 3,0 de chat e 0,8 de embeddings. Latência sem a pausa: p50 9,7 s e p95 18,4 s.
+- **Provedor:**
+  - 3 retries 429/503, somando 4 s de backoff;
+  - 0 timeouts e 0 usos do fallback;
+  - **3 respostas truncadas detectadas e repetidas com sucesso**, em `diet-egg-allergy`, `diet-celiac-lactose` e `cart-change-quantity`. Sem o mecanismo, essas 3 respostas teriam sido entregues cortadas ao usuário. O eval não mostra se cada uma teria reprovado o caso.
+- **Casos que mudaram de falha para acerto:** `diet-vegan-40` (timeout na v4) e `conflict-burger-then-hummus` (truncamento na v4).
+- **Casos que regrediram:** nenhum.
+- **Apresentação:** o README e a linha do currículo passam a mostrar esta execução, com a faixa das anteriores (90% a 95%), por decisão do dono. A v4 continua registrada acima, com 18/20.
+- **Lição:** com o provedor gratuito, a maior parte das falhas era de infraestrutura (timeouts e streams cortados), não de decisão do agente. Tratar essas falhas como erros recuperáveis mudou mais o resultado que ajustar o prompt.
 
 ## Modelo para novas versões (copie e preencha)
 

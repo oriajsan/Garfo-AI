@@ -70,12 +70,12 @@ Outras decisões de detalhe estão em [`docs/decisions-log.md`](docs/decisions-l
 
 | Métrica                          | Resultado                                               |
 | -------------------------------- | ------------------------------------------------------- |
-| Taxa de acerto                   | 90% (18 de 20)                                          |
-| Latência por resposta (p50, p95) | 7.372 ms, 27.505 ms                                     |
+| Taxa de acerto (última execução) | 100% (20 de 20); execuções anteriores entre 90% e 95%   |
+| Latência por resposta (p50, p95) | 9.725 ms, 18.392 ms                                     |
 | Custo por conversa de teste      | US$ 0 (plano gratuito do Gemini)                        |
 | Modelo avaliado                  | gemini-3.5-flash-lite (fallback: gemini-3.1-flash-lite) |
 
-Execução oficial de 2026-11-12, com o Gemini pela camada compatível com a OpenAI ([ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md)). As 2 falhas: `diet-vegan-40`, timeout do provedor no modelo principal e no fallback, que conta como falha do agente; e `conflict-burger-then-hummus`, resposta truncada pelo provedor no meio da frase (o agente agiu certo, o caso passou 5/5 em reexecução isolada e o bug foi corrigido depois; o número oficial não muda). O detalhe por caso fica em [`evals/results/latest.md`](evals/results/latest.md), e o que mudou entre as versões em [`evals/results/history.md`](evals/results/history.md).
+Última execução (2026-11-12): 20/20 (100%); execuções anteriores entre 90% e 95%, com o Gemini pela camada compatível com a OpenAI ([ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md)). As falhas anteriores com o prompt e os critérios atuais foram timeouts do provedor gratuito e uma resposta truncada pelo stream. Na primeira execução houve também uma falha do agente (característica "picante" sem a tag `spicy`) e uma do critério do eval, ambas corrigidas depois. Após a detecção e repetição automática de respostas truncadas, a execução atual recuperou 3 respostas truncadas que, sem esse mecanismo, teriam sido entregues cortadas. O histórico completo está em [`evals/results/history.md`](evals/results/history.md), e o detalhe por caso da última execução em [`evals/results/latest.md`](evals/results/latest.md).
 
 Como funciona a avaliação: `pnpm eval` sobe o contexto do NestJS sem HTTP, chama o `AgentService` direto com uma sessão nova por caso, lê as tool calls persistidas e confere cada expectativa (argumentos das tools, pratos recomendados contra o banco, carrinho final, ids inventados). Antes de rodar, imprime quantos pratos do banco passam e quantos são eliminados pelos filtros de cada caso, para que nenhum caso seja fácil demais. Com `LLM_PROVIDER=fake` ele valida o harness sem chave e grava em `evals/results/fake-latest.md`, sem medir qualidade de LLM.
 
