@@ -148,3 +148,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Eval run with the fake provider (D5.1): local validation output, never the official result
+evals/results/fake-latest.md
