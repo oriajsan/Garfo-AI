@@ -48,3 +48,10 @@ Assim, a busca híbrida vira **um único SQL**: o `WHERE` aplica os filtros e o 
 - **`EMBEDDING_DIMENSIONS` validado como exatamente 1536.** A coluna é `vector(1536)`; qualquer outro valor faria os `INSERT` de embedding falharem. Trocar de modelo de embedding exige uma migration nova.
 - **Ids determinísticos no seed.** Os ids de restaurantes e pratos são UUIDs derivados de um hash (`sha256`) do slug e do nome do prato. Recriar o banco gera os mesmos ids, o que deixa casos de avaliação, logs e demos reproduzíveis.
 - **`embeddingText` com rótulos em português.** O formato segue a especificação (`"{nome}. {descrição}. Categoria: {categoria}. Restaurante: {restaurante} ({culinária}). Tags: {tags}."`), mas categoria e tags usam os rótulos em pt-BR ("Prato principal", "sem glúten") em vez dos códigos (`MAIN`, `gluten_free`), para o vetor ficar mais próximo das perguntas dos usuários, que serão em português.
+
+## Atualização (blocos 2 e 5): o que a implementação fez de diferente
+
+- **O ranking não usa o índice HNSW (D2.16).** O score final (`0,8 × vetorial + 0,2 × trigram`, com limiar) é calculado numa subconsulta e a ordenação é por ele, não por `ORDER BY embedding <=> $vec`. Com cerca de 80 pratos, a varredura completa leva milissegundos. O índice continua criado na migration, pronto para o dia em que o catálogo crescer: o caminho é pré-selecionar os K vizinhos pelo índice e só então recalcular o score.
+- **Embedding falso lexical (D2.1) e hash com modelo (D2.2).** Sem chave, o `FakeEmbeddingProvider` faz _feature hashing_ de palavras: determinístico e sem rede, mas textos com palavras em comum ficam próximos (vetores aleatórios por hash não achariam nada). O `embeddingHash` inclui o id do modelo, então trocar do falso para o real regenera os vetores em vez de pular por "texto não mudou".
+- **Limiar de relevância por provedor (D2.3):** 0,25 com o provedor real e 0 com o falso, cujos cossenos lexicais são naturalmente baixos.
+- **Consequência para a avaliação:** o resultado oficial só vale com embeddings reais (`pnpm db:embed` com a chave) e `LLM_PROVIDER=openai`.
