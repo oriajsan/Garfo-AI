@@ -3,6 +3,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from 'openai/resources/chat/completions';
+import { sanitizeJsonSchema } from './schema-sanitizer';
 import { type ChatMessage, type LlmStreamChunk, type ToolDefinition } from './llm.types';
 
 /** Internal `ChatMessage[]` -> OpenAI messages, with the system prompt first. */
@@ -47,7 +48,11 @@ export function toOpenAiMessages(
 export function toOpenAiTools(tools: ToolDefinition[]): ChatCompletionTool[] {
   return tools.map((tool) => ({
     type: 'function' as const,
-    function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: sanitizeJsonSchema(tool.parameters),
+    },
   }));
 }
 
@@ -60,21 +65,32 @@ export class ToolCallAggregator {
 
   add(deltas: ChatCompletionChunk.Choice.Delta.ToolCall[]): void {
     for (const delta of deltas) {
-      const current = this.calls.get(delta.index) ?? { id: '', name: '', args: '' };
+      const index = this.resolveIndex(delta);
+      const current = this.calls.get(index) ?? { id: '', name: '', args: '' };
       if (delta.id) current.id = delta.id;
       if (delta.function?.name) current.name += delta.function.name;
       if (delta.function?.arguments) current.args += delta.function.arguments;
-      this.calls.set(delta.index, current);
+      this.calls.set(index, current);
     }
+  }
+
+  /**
+   * Some compatible endpoints (Gemini) omit `index`. A delta carrying an id or name then starts a
+   * new call; one without continues the latest call.
+   */
+  private resolveIndex(delta: ChatCompletionChunk.Choice.Delta.ToolCall): number {
+    if (typeof delta.index === 'number') return delta.index;
+    if (delta.id || delta.function?.name || this.calls.size === 0) return this.calls.size;
+    return this.calls.size - 1;
   }
 
   /** Complete calls ordered by index; an empty argument string becomes `{}`. */
   flush(): LlmStreamChunk[] {
     return [...this.calls.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([, call]) => ({
+      .map(([index, call]) => ({
         type: 'tool_call' as const,
-        id: call.id,
+        id: call.id || `call_${index}`,
         name: call.name,
         argsJson: call.args === '' ? '{}' : call.args,
       }));
@@ -91,8 +107,8 @@ export async function* adaptOpenAiStream(
 
   for await (const chunk of stream) {
     if (chunk.usage) {
-      inputTokens = chunk.usage.prompt_tokens;
-      outputTokens = chunk.usage.completion_tokens;
+      inputTokens = chunk.usage.prompt_tokens ?? 0;
+      outputTokens = chunk.usage.completion_tokens ?? 0;
     }
     const delta = chunk.choices[0]?.delta;
     if (!delta) continue;
