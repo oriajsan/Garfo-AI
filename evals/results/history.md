@@ -71,13 +71,13 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
   - Em `diet-vegan-40`, o timeout aconteceu no modelo principal e no fallback.
 - **Casos que falharam:**
   - `diet-vegan-40`: `LLM_TIMEOUT` no principal e no fallback, depois de iniciar `search_dishes` (o rastro parcial mostra que a busca rodou). Falha do provedor que conta como falha do agente (D6.15).
-  - `conflict-burger-then-hummus`: a resposta final veio cortada no meio da frase. Ela foi registrada como **ponto a investigar depois**, sem nenhum ajuste agora.
+  - `conflict-burger-then-hummus`: resposta truncada no meio da frase pelo provedor, com o agente correto (análise abaixo).
 - **Casos que mudaram em relação à v3:**
   - `simple-dessert-15` voltou a passar (era timeout na v3).
   - `diet-vegan-40` e `conflict-burger-then-hummus` passaram a falhar.
   - Com 20 casos e um provedor gratuito instável, mudanças de 1 caso entre execuções estão dentro do ruído.
 
-### Ponto a investigar depois: resposta cortada em `conflict-burger-then-hummus`
+### Análise: resposta truncada em `conflict-burger-then-hummus`
 
 Resposta final registrada pelo eval, na íntegra:
 
@@ -85,13 +85,17 @@ Resposta final registrada pelo eval, na íntegra:
 O **Homus com pão sírio** ([[dish:e9e0a7df-235e-5305-8629-7c18beb6ae35]]) é do restaurante *
 ```
 
-O texto termina em `*`, no meio de um negrito, sem citar o restaurante e sem pergunta ao usuário. O carrinho não misturou restaurantes, e só `finalReplyMentions` falhou. Hipóteses, não verificadas:
-
-- o stream terminou cedo do lado do provedor (`finish_reason` diferente de `stop`, ou conexão encerrada);
-- o parser de marcadores `[[dish:id]]` reteve texto no buffer e não o liberou no fim do stream;
-- o limite de `max_tokens` foi atingido com o thinking contando nele.
-
-Para investigar: registrar o `finish_reason` de cada chamada e conferir o flush do parser no fim do stream.
+- **Classificação:** truncamento de resposta, um **bug do produto**. O agente agiu corretamente: não misturou restaurantes, não chamou `clear_cart` e começou a explicar o conflito. Só `finalReplyMentions` falhou, porque o texto parou antes de citar o restaurante.
+- **Reexecução isolada:** `EVAL_ONLY=conflict-burger-then-hummus EVAL_REPEAT=5` passou **5/5**.
+- **Resultado oficial mantido em 18/20.** A falha não foi reclassificada.
+- **Causa:**
+  - O texto persistido é o texto bruto do modelo, ainda com o marcador `[[dish:...]]`, então o parser de marcadores não perdeu nada. O stream do provedor terminou antes do fim da resposta.
+  - O adaptador de stream ignorava o `finish_reason`, e o agente aceitava qualquer fim de stream como resposta completa.
+- **Correção (pós-eval, não afeta o número oficial):**
+  - O `finish_reason` passou a ser logado em toda chamada (`llm_stream_end`).
+  - Um stream sem `finish_reason` válido, ou com texto estruturalmente incompleto, é tratado como erro recuperável. O front recebe `message_reset` e a chamada é repetida uma vez. Se truncar de novo, o usuário recebe um erro em vez de texto cortado.
+  - Há teste reproduzindo exatamente esta resposta.
+  - Detalhes em `docs/decisions-log.md`.
 
 - **Lição:**
   - Medir o provedor direito mudou a leitura dos números. O fallback salva casos de verdade (2 de 3 usos).
