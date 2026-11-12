@@ -81,7 +81,7 @@ Como funciona a avaliação: `pnpm eval` sobe o contexto do NestJS sem HTTP, cha
 
 ## Como rodar
 
-Requisitos: Docker. Para desenvolvimento sem Docker na API e no web: Node 20.19+ e pnpm 9.
+Requisitos: Docker. Para desenvolvimento sem Docker na API e no web: Node 24 e pnpm 9.
 
 ### Com Docker, sem chave
 

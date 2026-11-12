@@ -3,7 +3,7 @@
 # NEXT_PUBLIC_* values are inlined into the JS bundle at build time, so they are build ARGs
 # (changing the API URL means rebuilding the image).
 
-FROM node:20.19-alpine AS base
+FROM node:24-alpine AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -26,7 +26,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm --filter "@garfo/web..." build
 
 # 3) runtime: only the standalone server and static assets, non-root user.
-FROM node:20.19-alpine AS runtime
+FROM node:24-alpine AS runtime
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000

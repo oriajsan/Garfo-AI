@@ -7,6 +7,8 @@ para acertar o CORS depois de criar o domínio da Vercel.
 Pré-requisitos: repositório no GitHub com o `main` atualizado, contas gratuitas em Neon, Railway e Vercel e uma
 chave da OpenAI (opcional: sem ela a demo funciona em modo demonstração, com aviso na interface).
 
+> **Node 24.** O projeto roda no Node 24 (`engines.node` em `>=24 <25`). No Railway, o `apps/api/Dockerfile` já usa `node:24-alpine`. A Vercel encerrou o suporte ao Node 20 (fora de suporte desde abril de 2026), por isso o deploy do web exige Node 24: o `engines` do `package.json` seleciona a versão, e em **Settings -> General -> Node.js Version** ela deve estar em 24.x.
+
 Arquivos de configuração já prontos no repositório:
 
 | Arquivo                         | Para quê                                                                               |
