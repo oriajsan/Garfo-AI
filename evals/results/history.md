@@ -43,6 +43,18 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
   - Critérios de texto precisam aceitar variações; o nome dos restaurantes é um sinal mais estável que uma lista de verbos.
   - No plano gratuito, a variância de latência do provedor domina. Os próximos passos atacam isso: `reasoning_effort`, timeout com modelo de fallback e aviso de lentidão no front.
 
+## v3 (preparação): latência do plano gratuito
+
+- **O que mudou:**
+  - `reasoning_effort=minimal` no Gemini;
+  - timeout de 15 s até o primeiro chunk, com uma repetição no `gemini-3.1-flash-lite`;
+  - aviso de lentidão no front.
+    Prompt e tools iguais aos da v2.
+- **Medição isolada** (`EVAL_ONLY=simple-vegetarian-40 EVAL_REPEAT=5`, todas 5/5): antes, p50 5,8 s e p95 21,2 s (faixa 2,4 a 21,2 s); depois, p50 9,6 s e p95 16,0 s (faixa 8,6 a 16,0 s), sem timeouts nem fallback. Diferença dentro do ruído.
+- **Resultado:** XX/20 (antes: 19/20).
+- **Timeouts e fallbacks no eval completo:** XX.
+- **Lição:** XX.
+
 ## Modelo para novas versões (copie e preencha)
 
 ```md

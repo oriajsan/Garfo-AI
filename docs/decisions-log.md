@@ -121,3 +121,18 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D5.10-rev2 · Conflito por alternativas.** `finalReplyMentions` aceita `anyOf`. O caso passa se a resposta citar **os dois restaurantes envolvidos** (A) **ou** combinar um termo de lugar com um radical de conflito (`esvazi`, `troc`, `outr`, `diferent`...) (B). Motivo: a falha real foi do critério. O agente explicou o conflito com "esvazie", e a lista tinha só "esvaziar". `cartNeverMixesRestaurants` e `cartAfter` continuam no caso. Risco aceito: a alternativa B pode aprovar uma resposta que cite "outros pratos do restaurante" sem conflito, mas o estado do carrinho continua checado.
 - **D6.13 · Medição do eval.** A latência por resposta desconta a pausa do `EVAL_DELAY_MS` (na v1 ela estava incluída). O relatório mostra chamadas de chat e de embeddings por caso, retries 429/503 por caso (via logger observador, sem mudar a produção) e a resposta final dos casos que falharam. `EVAL_ONLY` e `EVAL_REPEAT` rodam casos isolados e gravam em `partial-latest.md` (ignorado no git), nunca em `latest.md`.
 - Commits `0add8d1` a `4f03c74`, aprovados pelo reviewer. Antes e depois em `evals/results/history.md`.
+
+## Pós-sessão: latência do plano gratuito (depois do eval v2 = 19/20, 2026-11-12)
+
+- **D6.14 · `reasoning_effort` só em endpoint compatível** (`LLM_REASONING_EFFORT`, padrão `minimal`). Altera a D6.5, que dizia que não enviávamos. Com a OpenAI o payload segue idêntico (coberto por teste). O Gemini real aceitou `minimal` (`pnpm llm:smoke`). Medição com `EVAL_ONLY=simple-vegetarian-40 EVAL_REPEAT=5`, todas as execuções 5/5 e 2 chamadas de chat:
+
+  |        | Faixa        | p50   | p95    |
+  | ------ | ------------ | ----- | ------ |
+  | Antes  | 2,4 a 21,2 s | 5,8 s | 21,2 s |
+  | Depois | 8,6 a 16,0 s | 9,6 s | 16,0 s |
+
+  Com n=5, a diferença fica dentro do ruído do enfileiramento do plano gratuito. Não há evidência de ganho nem de perda, e o padrão foi mantido como o dono pediu.
+
+- **D6.15 · Timeout de 15 s até o primeiro chunk, com uma repetição no `LLM_FALLBACK_MODEL`** (`LLM_CALL_TIMEOUT_MS`). Ordem: principal (com retry 429/503), timeout, fallback (com retry e timeout próprios), `LLM_TIMEOUT` (504, mensagem amigável). Depois do primeiro chunk nada é refeito (mesma regra da D6.8), e o abort do usuário nunca vira timeout. `LLM_TIMEOUT` conta como falha do agente, não como infraestrutura. Logs `llm_timeout` e `llm_fallback`, e o eval conta os dois por caso. Verificado no `llm:smoke`: o `gemini-3.1-flash-lite` aceitou o histórico com as thought signatures do `gemini-3.5-flash-lite`.
+- **D6.16 · Aviso de lentidão no front depois de 8 s sem nenhum evento** durante o streaming (silêncio, não tempo total), abaixo do indicador da tool, com `aria-live`.
+- Commits `93d13c4`, `661ba4f`, `d593d65` e `4d23113`, aprovados pelo reviewer (só achados menores: sem teste explícito de vazamento de timers e listeners, e sem teste do `MessageBubble`).
