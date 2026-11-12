@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "noEmit": true, "rootDir": "." },
-  "include": ["src", "prisma", "test"]
+  "include": ["src", "prisma", "test", "scripts", "jest.config.ts"]
 }

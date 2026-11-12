@@ -24,7 +24,7 @@ apps/web         -> @garfo/web
 packages/shared  -> @garfo/shared (dependência "workspace:*" dos dois apps)
 ```
 
-- A versão do pnpm fica fixada em `packageManager` no `package.json` raiz (`pnpm@9.15.9`), e a do Node em `.nvmrc` (20).
+- A versão do pnpm fica fixada em `packageManager` no `package.json` raiz (`pnpm@9.15.9`), e a do Node em `.nvmrc` (20.19). O piso 20.19 existe porque o `@scalar/nestjs-api-reference@1.0.31` depende de pacotes ESM e só funciona com `require` de ESM, disponível sem flag a partir do Node 20.19.
 - TypeScript `strict` vem de um `tsconfig.base.json` único, que cada pacote estende.
 - ESLint e Prettier são configurados uma vez na raiz (`.eslintrc.cjs`, `.prettierrc.json`); cada pacote só acrescenta o que é dele (regras com checagem de tipos na API e no shared, `next/core-web-vitals` no web).
 - Os scripts da raiz (`pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`) usam `pnpm -r`, que roda em todos os pacotes **em ordem topológica**: o `shared` é compilado antes de quem depende dele.
@@ -69,3 +69,19 @@ A seção 2 da especificação pede registro de qualquer dependência fora da li
 - **ESLint 8.57 (configuração `.eslintrc`)**, e não ESLint 9 com _flat config_: o `eslint-config-next` 14, que acompanha o Next 14 fixado na especificação, só tem suporte completo ao formato antigo. Atualizar o ESLint fica para quando o projeto subir para o Next 15.
 - **`ConfigModule` próprio, sem `@nestjs/config`:** o módulo tem cerca de 30 linhas (schema Zod em `config/env.ts`, um `ConfigService` tipado e um provider global). Evita uma dependência e deixa explícito que a API não sobe com variável inválida.
 - **Health check sem `@nestjs/terminus`:** `GET /api/v1/health` faz `SELECT 1` no banco e devolve `200 { status: 'ok', db: 'ok' }` ou `503 { status: 'error', db: 'error' }`. O status 503 permite que Docker e Railway detectem a API sem banco.
+
+### Bloco 2: busca, carrinho e qualidade
+
+Da lista da seção 3 (sem registro necessário): `openai`, `nestjs-zod`, `@nestjs/swagger`, `@scalar/nestjs-api-reference`, `helmet`, `jest`, `ts-jest`, `@types/jest`, `supertest`, `@types/supertest`. Fora da lista:
+
+| Pacote            | Onde              | Motivo                                                                               |
+| ----------------- | ----------------- | ------------------------------------------------------------------------------------ |
+| `@nestjs/testing` | api (dev)         | Monta o `AppModule` real nos testes e2e com Supertest.                               |
+| `ts-node`         | api, shared (dev) | O Jest só lê `jest.config.ts` (pedido no briefing) se o `ts-node` estiver instalado. |
+
+Versões fixadas por compatibilidade com Node 20 e Nest 10:
+
+- **`openai@^4`**: as versões 5 em diante exigem Node 22; o projeto fixa Node 20 LTS (seção 3). A API usada (`chat.completions.create` com `stream: true`, `embeddings.create`) é a mesma.
+- **`@scalar/nestjs-api-reference@1.0.31`** (exata): versões mais novas declaram `engines.node >= 22`. A 1.0.31 é a última que aceita Node 20. Ela depende de pacotes ESM; funciona em runtime no Node 20.19+ (`require` de ESM), e por isso o teste e2e substitui só esse módulo por um stub (o Jest roda em CommonJS).
+- **`@nestjs/swagger@^7`**: a linha compatível com Nest 10.
+- **`nestjs-zod@^5`** com `zod@^3.25`: gera o OpenAPI a partir dos mesmos schemas Zod do `packages/shared`.

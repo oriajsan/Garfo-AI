@@ -67,7 +67,15 @@ jobs:
       - name: Seed database
         run: pnpm db:seed
 
-      # Next blocks add here: embed with LLM_PROVIDER=fake, pnpm test and pnpm test:e2e.
+      # LLM_PROVIDER=fake comes from the job env: no real key, no network.
+      - name: Embed dishes (fake provider)
+        run: pnpm db:embed
+
+      - name: Unit and integration tests
+        run: pnpm test
+
+      - name: End-to-end tests
+        run: pnpm test:e2e
 
       - name: Build
         run: pnpm build
