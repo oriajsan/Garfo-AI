@@ -71,10 +71,14 @@ Arquivos de configuração já prontos no repositório:
    | `MAX_DAILY_CHAT_REQUESTS` | `500`                                                                                            |
    | `DB_BOOTSTRAP_ON_START`   | `false` (o banco já foi preparado no passo 1.4)                                                  |
 
-   Para usar o Gemini gratuito, ponha a chave do Gemini em `OPENAI_API_KEY`, defina `OPENAI_BASE_URL`, `LLM_CHAT_MODEL=gemini-2.5-flash`,
+   Para usar o Gemini gratuito, ponha a chave do Gemini em `OPENAI_API_KEY`, defina `OPENAI_BASE_URL`, `LLM_CHAT_MODEL=gemini-3.5-flash-lite` (alternativa mais lenta: `gemini-3.5-flash`),
    `LLM_EMBEDDING_MODEL=gemini-embedding-001` e mantenha `EMBEDDING_DIMENSIONS=1536`. Rode o passo 1.4 (`pnpm db:setup`) com as mesmas
    variáveis exportadas, ou `pnpm db:embed` de novo se o banco já tinha embeddings de outro modelo. No workflow `eval.yml`, crie o secret
    `OPENAI_BASE_URL` (opcional) e as variáveis `LLM_CHAT_MODEL`, `LLM_EMBEDDING_MODEL` e `EVAL_PRICE_*` (0 para o Gemini gratuito).
+
+   Antes de publicar, rode `pnpm llm:smoke` localmente com as mesmas variáveis: ele faz um ciclo de chat com tool call e um embedding,
+   mostra requisições e respostas (chave mascarada) e sai com erro se o provedor recusar algo. Em produção, os logs `llm_retry`,
+   `llm_http_error` e `chat_error` trazem status e corpo dos erros do provedor.
 
    Não defina `PORT`: o Railway injeta a porta e a API a respeita.
 

@@ -119,7 +119,7 @@ cp .env.example .env
 # LLM_PROVIDER=openai
 # OPENAI_API_KEY=<chave do Gemini>
 # OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-# LLM_CHAT_MODEL=gemini-2.5-flash
+# LLM_CHAT_MODEL=gemini-3.5-flash-lite   # recomendado (~1,5 s por chamada); gemini-3.5-flash é a alternativa, mais lenta (~9 s)
 # LLM_EMBEDDING_MODEL=gemini-embedding-001
 # EMBEDDING_DIMENSIONS=1536
 # EVAL_PRICE_INPUT_USD_PER_MTOK=0
@@ -127,7 +127,15 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Trocar o modelo de embedding exige rodar `pnpm db:embed` de novo (o hash do prato inclui o modelo, então os vetores antigos são recalculados). O tier gratuito tem limite de requisições por minuto e por dia, que pode afetar o `pnpm eval`. Detalhes no [ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md).
+Trocar o modelo de embedding exige rodar `pnpm db:embed` de novo (o hash do prato inclui o modelo, então os vetores antigos são recalculados). O tier gratuito tem limite de requisições por minuto e por dia, que pode afetar o `pnpm eval`. O `gemini-2.5-flash` não está disponível para contas novas. Erros 429/503 do provedor são refeitos até 3 vezes (esperas de 1 s, 2 s e 4 s); se persistirem, a interface mostra "O serviço de IA está sobrecarregado". Detalhes no [ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md).
+
+#### Diagnóstico do provedor
+
+```bash
+pnpm llm:smoke       # TEM CUSTO MÍNIMO: 2 chamadas de chat e 1 de embedding
+```
+
+Com o `.env` configurado (`LLM_PROVIDER=openai`), roda um ciclo completo sem stream (pergunta, tool call `search_dishes`, resultado fixo, resposta final) e um embedding, imprimindo cada requisição e resposta em JSON com a chave mascarada. Termina com código diferente de zero, mostrando status HTTP e corpo, se o provedor recusar algo. Use-o antes de `db:embed` e `eval` para validar um modelo novo. Os erros do provedor também aparecem nos logs da API (`llm_http_error`, `chat_error`) com status e corpo.
 
 ### Avaliação com o LLM real
 
