@@ -1,0 +1,112 @@
+# Auditoria de dependências
+
+Data: 2026-11-12. Branch: `fix/deps-audit`. Ferramenta: `pnpm audit` (pnpm 9.15.9).
+
+Regra desta rodada: nenhuma versão major muda. Só entram correções por `pnpm.overrides` (transitivas) e um ajuste de faixa em uma devDependency, sempre dentro da mesma major.
+
+## Comandos e contagem
+
+Comandos: `pnpm audit --prod` e `pnpm audit` (completo, inclui desenvolvimento). A contagem do `pnpm audit` é por achado, isto é, por advisory e por versão vulnerável do pacote.
+
+| Comando             | Antes | Depois | Critical | High     | Moderate | Low    |
+| ------------------- | ----- | ------ | -------- | -------- | -------- | ------ |
+| `pnpm audit --prod` | 55    | 29     | 3 -> 3   | 24 -> 10 | 24 -> 14 | 4 -> 2 |
+| `pnpm audit`        | 69    | 43     | 3 -> 3   | 28 -> 14 | 30 -> 20 | 8 -> 6 |
+
+Os 29 restantes em produção são: `next` 25, `file-type` 2, `@nestjs/core` 1 e `zod` 1. Os 14 restantes só de desenvolvimento estão na seção própria.
+
+## Corrigido (sem mudar major)
+
+Overrides no `package.json` da raiz. As versões resolvidas ficaram em `multer` 2.5.0, `body-parser` 1.20.9, `qs` 6.17.1, `lodash` 4.18.1, `js-yaml` 4.3.2 e `postcss` 8.5.32 (o override aceita `^`, então o pnpm pega a mais nova da faixa).
+
+| Módulo        | De      | Para   | Via (override)                                                                    | Advisories fechados                                                                                                                                                                                                               |
+| ------------- | ------- | ------ | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `multer`      | 2.0.2   | 2.5.0  | `@nestjs/platform-express>multer: ^2.5.0`                                         | 9: GHSA-xf7r-hgr6-v32p, GHSA-v52c-386h-88mc, GHSA-5528-5vmv-3xc2, GHSA-72gw-mp4g-v24j, GHSA-3p4h-7m6x-2hcm, GHSA-wc9g-mqfw-jrwm, GHSA-qvfw-j98x-7q72, GHSA-535w-7cp7-47q4, GHSA-q7qp-rjg7-q26m (DoS e bypass de limite em upload) |
+| `body-parser` | 1.20.4  | 1.20.9 | `@nestjs/platform-express>body-parser: ^1.20.9`                                   | 2: GHSA-27r3-jxmh-p828 (alta), GHSA-v422-hmwv-36x6                                                                                                                                                                                |
+| `qs`          | 6.14.3  | 6.17.1 | `qs: ^6.16.1` (global, ver nota)                                                  | 4: GHSA-q8mj-m7cp-5q26, GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g, GHSA-6pq8-jhm2-2vcw                                                                                                                                             |
+| `lodash`      | 4.17.21 | 4.18.1 | `@nestjs/swagger>lodash: ^4.18.0`                                                 | 2: GHSA-r5fr-rjxr-66jc (alta), GHSA-xxjr-mmjv-4gpg                                                                                                                                                                                |
+| `js-yaml`     | 4.1.0   | 4.3.2  | `@nestjs/swagger>js-yaml: ^4.3.2`                                                 | 5: GHSA-mh29-5h37-fv8m, GHSA-h67p-54hq-rp68, GHSA-52cp-r559-cp3m, GHSA-5p4m-2wfm-xmqj, GHSA-2883-xcg3-v3hh                                                                                                                        |
+| `postcss`     | 8.4.31  | 8.5.32 | `next>postcss: ^8.5.23`, mais `apps/web` devDependency `postcss: ^8` -> `^8.5.32` | 4: GHSA-qx2v-qp2m-jg93, GHSA-6g55-p6wh-862q, GHSA-fxqj-rqcc-2cmp, GHSA-r28c-9q8g-f849                                                                                                                                             |
+
+Notas:
+
+- Saltos de minor em transitivas (decisão do líder, semver compatível): `multer` 2.0 -> 2.5, `body-parser` 1.20.4 -> 1.20.9 (patch), `qs` 6.14 -> 6.17, `lodash` 4.17 -> 4.18, `js-yaml` 4.1 -> 4.3, `postcss` 8.4 -> 8.5.
+- O `qs` ficou como override global porque o `express` também o consome; assim todos os consumidores sobem juntos (todos pedem `^6`).
+- A devDependency `postcss` de `apps/web` estava travada em 8.4.31 no lockfile e mantinha uma segunda cópia; subir a faixa para `^8.5.32` (mesma major, só desenvolvimento) elimina a duplicata e foi a única alteração fora de overrides.
+- O `multer` 2.5.0 removeu as dependências `concat-stream`, `mkdirp`, `object-assign`, `typedarray` e `xtend`, então o lockfile encolheu.
+- Diff de pacotes resolvidos (lockfile antes x depois): só mudaram `body-parser`, `multer` (versões novas) e saíram `concat-stream`, `js-yaml@4.1.0`, `lodash@4.17.21`, `mkdirp`, `postcss@8.4.31`, `qs@6.14.3`, `typedarray` e `xtend`. Nenhuma major mudou.
+- Dependências diretas dentro da mesma major, conferidas no registro: `next` 14.2.35, `@nestjs/core`, `@nestjs/common` e `@nestjs/platform-express` 10.4.22, `@nestjs/swagger` 7.4.2 e `zod` 3.25.76 já são as últimas; nenhuma atualização resolve algo. `file-type` 20.5.0 (última da 20) continua vulnerável.
+
+## Pendentes de produção (exigem major)
+
+| Módulo                 | Achados | Severidade                                                                       | Por que exige major                                                      | Exposição no app                                                                                                                                                                                   | Plano                                                                                              |
+| ---------------------- | ------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `next` 14.2.35         | 25      | 3 critical, 9 high, 11 moderate, 2 low                                           | Correções só na 15.5.x (15.5.28 fecha todos); a 14.x terminou em 14.2.35 | Parcial: 5 aplicáveis (DoS e cache em RSC), 3 críticos provavelmente não aplicáveis ou não aplicáveis; detalhe abaixo                                                                              | Migrar para Next 15.5.x em bloco próprio (React 19 e mudanças de async request APIs)               |
+| `@nestjs/core` 10.4.22 | 1       | moderate (GHSA-36xv-jgw5-4q75, injeção em saída usada por componente downstream) | Corrigido na 11.1.18                                                     | Baixa: o app não usa o recurso afetado de forma evidente; confirmar o advisory ao planejar                                                                                                         | Migrar para Nest 11 (junto com `@nestjs/swagger` 8+, `@nestjs/throttler`, `nestjs-zod` compatível) |
+| `zod` 3.25.76          | 1       | high (GHSA-mrhx-c7xc-m3w5, uso de memória em coleções restritas muito grandes)   | Corrigido só na 4.6.6                                                    | Aplicável em tese: os schemas validam entrada da API, mas o corpo das requisições já é limitado em tamanho pelo body parser (limites de campo dos schemas não foram reauditados aqui); risco baixo | Migrar para Zod 4 (impacta `nestjs-zod`, `@garfo/shared`, evals)                                   |
+| `file-type` 20.4.1     | 2       | moderate (GHSA-5v7r-6r5c-r473, GHSA-j47w-4g3g-c36v)                              | Corrigido na 21.3.2; a 20.5.0 não resolve; vem de `@nestjs/common`       | Não aplicável: o app não tem upload, não usa `FileTypeValidator` nem `FileInterceptor` (`grep` em `apps/api/src` sem ocorrências)                                                                  | Resolve-se ao migrar para Nest 11 se ele atualizar a dependência                                   |
+
+### Exposição dos 25 advisories do `next`
+
+Perfil do app (verificado no código): App Router, sem middleware, sem `rewrites`, sem i18n, sem Server Actions (`"use server"` ausente), sem `next/image` e sem `next/script`, sem CSP com nonce, `public/` vazio, `output: 'standalone'` rodando `node apps/web/server.js` (servidor padrão, não customizado) em Linux (imagem Docker), com `vercel.json` para deploy na Vercel. O navegador chama a API Nest diretamente (`NEXT_PUBLIC_API_URL`); o Next só serve páginas estáticas pré-renderizadas.
+
+Classificação: Aplicável (5), Provavelmente não aplicável (10), Não aplicável (10).
+
+| Advisory                       | Resumo                                                           | Exposição                                                                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GHSA-h25m-26qc-wcjf (high)     | DoS por desserialização de requisição em React Server Components | Aplicável                                                                                                                                                   |
+| GHSA-q4gf-8mx6-v5v3 (high)     | DoS com Server Components                                        | Aplicável                                                                                                                                                   |
+| GHSA-8h8q-6873-q5fj (high)     | DoS com Server Components                                        | Aplicável                                                                                                                                                   |
+| GHSA-wfc6-r584-vfw7 (moderate) | Envenenamento de cache em respostas RSC                          | Aplicável, impacto baixo (páginas públicas e estáticas, sem dado por usuário)                                                                               |
+| GHSA-vfv6-92ff-j949 (low)      | Envenenamento de cache por colisão no cache-busting de RSC       | Aplicável, impacto baixo (mesmo motivo)                                                                                                                     |
+| GHSA-2xp9-vwfh-vxw4 (critical) | RCE no Image Optimization API com arquivos AVIF                  | Provavelmente não aplicável: não há imagens em `public/` nem `next/image`; o endpoint `/_next/image` existe por padrão, mas sem fonte de imagem processável |
+| GHSA-2464-fhr4-w9xw (critical) | RCE no Image Optimization API com arquivos SVG                   | Provavelmente não aplicável (mesmo motivo; o único SVG é `app/icon.svg`, servido como arquivo de metadados e não pelo otimizador)                           |
+| GHSA-h64f-5h5j-jqjh (moderate) | DoS no Image Optimization API                                    | Provavelmente não aplicável (mesmo motivo)                                                                                                                  |
+| GHSA-3x4c-7xq6-9pq8 (moderate) | Crescimento ilimitado do cache de `next/image`                   | Provavelmente não aplicável (não há `next/image`)                                                                                                           |
+| GHSA-9g9p-9gw9-jx7f (moderate) | DoS via `remotePatterns` do Image Optimizer                      | Não aplicável: sem `remotePatterns`                                                                                                                         |
+| GHSA-m99w-x7hq-7vfj (high)     | DoS no App Router com Server Actions                             | Provavelmente não aplicável: sem Server Actions (confirmar, o código de tratamento de ações atende POST com cabeçalho `Next-Action` em rotas do App Router) |
+| GHSA-p3m5-59mp-jv5r (high)     | DoS no App Router com Server Actions                             | Provavelmente não aplicável (mesmo motivo)                                                                                                                  |
+| GHSA-955p-x3mx-jcvp (moderate) | Divulgação de endpoints internos de Server Functions             | Provavelmente não aplicável: sem Server Actions                                                                                                             |
+| GHSA-68g3-v927-f742 (moderate) | Confusão de cache em respostas de requisições com corpo          | Provavelmente não aplicável: as únicas rotas com corpo estão na API Nest, em outra origem                                                                   |
+| GHSA-4633-3j49-mh5q (moderate) | Idem, com corpo UTF-8 inválido                                   | Provavelmente não aplicável (mesmo motivo)                                                                                                                  |
+| GHSA-c4j6-fc7j-m34r (high)     | SSRF com upgrades de WebSocket                                   | Provavelmente não aplicável: o app não usa WebSocket (o HMR só existe em desenvolvimento)                                                                   |
+| GHSA-4c39-4ccg-62r3 (moderate) | Payload ilimitado de Server Action no runtime Edge               | Não aplicável: sem Edge runtime nem Server Actions                                                                                                          |
+| GHSA-89xv-2m56-2m9x (high)     | SSRF em Server Actions em servidores customizados                | Não aplicável: servidor padrão e sem Server Actions                                                                                                         |
+| GHSA-p293-qw3h-jr36 (critical) | RCE sem autenticação em servidores hospedados no Windows         | Não aplicável: Linux (Docker) ou Vercel                                                                                                                     |
+| GHSA-ggv3-7p47-pfv8 (moderate) | HTTP request smuggling em `rewrites`                             | Não aplicável: sem `rewrites`                                                                                                                               |
+| GHSA-p9j2-gv94-2wf4 (high)     | SSRF em `rewrites`                                               | Não aplicável: sem `rewrites`                                                                                                                               |
+| GHSA-3g8h-86w9-wvmq (low)      | Cache poisoning em redirects de middleware                       | Não aplicável: sem middleware                                                                                                                               |
+| GHSA-36qx-fr4f-26g5 (high)     | Bypass de middleware no Pages Router com i18n                    | Não aplicável: App Router, sem middleware e sem i18n                                                                                                        |
+| GHSA-ffhc-5mcf-pf4q (moderate) | XSS no App Router com nonces de CSP                              | Não aplicável: sem nonce de CSP                                                                                                                             |
+| GHSA-gx5p-jg67-6x7h (moderate) | XSS em scripts `beforeInteractive`                               | Não aplicável: sem `next/script`                                                                                                                            |
+
+A classificação foi feita a partir do título e do resumo de cada advisory no `pnpm audit` e do código do app; o texto completo dos advisories não foi relido um a um. Os itens "provavelmente não aplicável" merecem uma conferência ao planejar a migração.
+
+Mitigações baratas sem trocar de major, não aplicadas aqui por estarem fora do escopo: `images: { unoptimized: true }` em `next.config.mjs` desativaria o endpoint `/_next/image` (cobre os 5 advisories de imagem, inclusive os 2 críticos) e um proxy ou WAF na frente do servidor pode limitar corpo e taxa de requisições (DoS em RSC).
+
+## Pendentes só de desenvolvimento
+
+Nenhum foi corrigido: todos vêm de `@nestjs/cli` 10 (ferramenta de build, que traz `@angular-devkit` 17 e `fork-ts-checker-webpack-plugin`) ou de `@typescript-eslint`, e não chegam à imagem de produção. As correções exigem major (Nest CLI 11) ou saltos em `0.x` (`tmp` 0.0.33 -> 0.2.x, que não é compatível por semver), então ficam para a migração para Nest 11.
+
+| Módulo                     | Advisories                               | Severidade     | Origem                                                    | Observação                                                                                       |
+| -------------------------- | ---------------------------------------- | -------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `tmp` 0.0.33               | GHSA-52f5-9888-hmc6, GHSA-ph9p-34f9-6g65 | low, high      | `@nestjs/cli > @angular-devkit/schematics-cli > inquirer` | Correção em 0.2.x (salto `0.x`)                                                                  |
+| `glob` 10.3.10 e 10.4.5    | GHSA-5j98-mcp5-4vw2, GHSA-3g3m-2fjr-6pw4 | high, moderate | `@nestjs/cli`                                             | O primeiro afeta só o uso via CLI do `glob` com `-c`                                             |
+| `webpack` 5.97.1           | GHSA-8fgc-7cc6-rx7x, GHSA-38r7-794h-5758 | low            | `@nestjs/cli > fork-ts-checker-webpack-plugin`            | Só afeta o plugin `buildHttp`, que não é usado                                                   |
+| `ajv` 8.12.0               | GHSA-2g4f-4pwh-qvx6                      | moderate       | `@nestjs/cli > @angular-devkit/core`                      | ReDoS com a opção `$data`                                                                        |
+| `picomatch` 4.0.1          | GHSA-3v7f-55p6-f55p, GHSA-c2c7-rcm5-vvqj | moderate, high | `@nestjs/cli > @angular-devkit/core`                      | Seria um bump trivial dentro da major 4, mas é pacote do Angular devkit; deixado para a migração |
+| `deepmerge` 4.3.1          | GHSA-gcqx-w48m-w2h4                      | low            | `@nestjs/cli > fork-ts-checker-webpack-plugin`            | Sem versão corrigida publicada                                                                   |
+| `minimatch` 9.0.9 e 10.2.6 | GHSA-g3hv-75wg-m249                      | moderate       | `@typescript-eslint`                                      | Corrigido só na 11                                                                               |
+
+A diferença entre as 11 advisories distintas e os 14 achados do `pnpm audit` vem de pacotes presentes em duas versões (`glob` e `minimatch`) e de advisories repetidos por versão.
+
+## Por que o Dependabot mostra 94 e o `pnpm audit` outro número
+
+Confirmado pela API do GitHub (`gh api .../dependabot/alerts`, 96 alertas abertos na hora da consulta):
+
+- O Dependabot cria um alerta por advisory por arquivo de manifesto. 66 alertas são do `pnpm-lock.yaml` (próximo dos 69 do `pnpm audit` completo, que conta por versão afetada).
+- Os outros 30 são duplicatas dos manifestos diretos: 25 do `next` em `apps/web/package.json`, 2 do `@nestjs/core` em `apps/api/package.json` e `evals/package.json`, 3 do `zod` em `apps/api`, `evals` e `packages/shared`. O `pnpm audit` não conta isso.
+- O Dependabot marca tudo como `runtime`, porque o lockfile do pnpm não distingue produção de desenvolvimento; por isso os alertas de dev (`webpack`, `tmp`, `glob`) aparecem junto. O `pnpm audit --prod` filtra e dá 55.
+- A diferença de 94 para 96 é só o momento da leitura (alertas novos entre a contagem do líder e a consulta).
+
+Depois deste PR, os alertas ligados aos pacotes corrigidos devem ser fechados automaticamente pelo Dependabot após o merge na `main`.
