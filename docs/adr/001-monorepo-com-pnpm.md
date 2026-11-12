@@ -24,7 +24,7 @@ apps/web         -> @garfo/web
 packages/shared  -> @garfo/shared (dependência "workspace:*" dos dois apps)
 ```
 
-- A versão do pnpm fica fixada em `packageManager` no `package.json` raiz (`pnpm@9.15.9`), e a do Node em `.nvmrc` (20).
+- A versão do pnpm fica fixada em `packageManager` no `package.json` raiz (`pnpm@9.15.9`), e a do Node em `.nvmrc` (20.19). O piso 20.19 existe porque o `@scalar/nestjs-api-reference@1.0.31` depende de pacotes ESM e só funciona com `require` de ESM, disponível sem flag a partir do Node 20.19.
 - TypeScript `strict` vem de um `tsconfig.base.json` único, que cada pacote estende.
 - ESLint e Prettier são configurados uma vez na raiz (`.eslintrc.cjs`, `.prettierrc.json`); cada pacote só acrescenta o que é dele (regras com checagem de tipos na API e no shared, `next/core-web-vitals` no web).
 - Os scripts da raiz (`pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`) usam `pnpm -r`, que roda em todos os pacotes **em ordem topológica**: o `shared` é compilado antes de quem depende dele.

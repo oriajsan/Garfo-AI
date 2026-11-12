@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Garfo API — multi-stage build (deps -> build -> runtime). Build context: repository root.
 
-FROM node:20-alpine AS base
+FROM node:20.19-alpine AS base
 RUN apk add --no-cache openssl
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
@@ -23,7 +23,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     && cd /out && node_modules/.bin/prisma generate
 
 # 3) runtime: only production files, non-root user.
-FROM node:20-alpine AS runtime
+FROM node:20.19-alpine AS runtime
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 WORKDIR /app
