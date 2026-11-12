@@ -29,7 +29,12 @@ export const searchDishesSchema = z.object({
     .array(dietaryTagSchema)
     .max(7)
     .optional()
-    .describe('Restrições alimentares obrigatórias: o prato precisa ter TODAS as tags.'),
+    .describe(
+      'Restrições alimentares E características do prato; o prato precisa ter TODAS as tags pedidas. ' +
+        'Mapeamento: picante/apimentado=spicy, proteico/rico em proteína=high_protein, leve=light, ' +
+        'vegetariano=vegetarian, vegano=vegan, sem glúten=gluten_free, sem lactose=lactose_free. ' +
+        'Se o usuário pedir qualquer uma dessas características, use a tag, não apenas a query.',
+    ),
   exclude_allergens: z
     .array(allergenSchema)
     .max(8)
