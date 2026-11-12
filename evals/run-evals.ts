@@ -40,7 +40,7 @@ import {
   parseEvalDelayMs,
   RateGate,
 } from './rate-gate';
-import { RetryCountingLogger } from './retry-counter';
+import { LlmEventCountingLogger } from './llm-event-counter';
 import { selectCases } from './select';
 import { evalCasesFileSchema, type EvalCase } from './schema';
 
@@ -135,7 +135,7 @@ async function runCase(
   catalog: ReadonlyMap<string, DishFacts>,
   gate: RateGate,
   label: string,
-  retryLog: RetryCountingLogger,
+  eventLog: LlmEventCountingLogger,
 ): Promise<CaseResult> {
   const { agent, conversations, carts, prisma } = services;
   const sessionId = randomUUID();
@@ -145,8 +145,10 @@ async function runCase(
   const cartDishIdsPerTurn: string[][] = [];
   const latenciesMs: number[] = [];
   const callsBefore = gate.calls;
-  const retriesBefore = retryLog.count;
-  const retryWaitBefore = retryLog.waitMs;
+  const retriesBefore = eventLog.count;
+  const retryWaitBefore = eventLog.waitMs;
+  const timeoutsBefore = eventLog.timeouts;
+  const fallbacksBefore = eventLog.fallbacks;
   let finalReplyText = '';
   let inputTokens = 0;
   let outputTokens = 0;
@@ -251,8 +253,10 @@ async function runCase(
       latenciesMs,
       chatCalls: callsAfter.chat - callsBefore.chat,
       embedCalls: callsAfter.embed - callsBefore.embed,
-      retries: retryLog.count - retriesBefore,
-      retryWaitMs: retryLog.waitMs - retryWaitBefore,
+      retries: eventLog.count - retriesBefore,
+      retryWaitMs: eventLog.waitMs - retryWaitBefore,
+      timeouts: eventLog.timeouts - timeoutsBefore,
+      fallbacks: eventLog.fallbacks - fallbacksBefore,
       finalReplyText,
     };
   } finally {
@@ -280,8 +284,8 @@ async function main(): Promise<void> {
   // retry stays underneath). Only the eval is paced; the API code is untouched.
   const gate = new RateGate(delayMs);
   // `withRetry` logs each 429/503 retry through the Nest Logger; observe it, do not change it.
-  const retryLog = new RetryCountingLogger();
-  Logger.overrideLogger(retryLog);
+  const eventLog = new LlmEventCountingLogger();
+  Logger.overrideLogger(eventLog);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(LLM_PROVIDER)
     .useFactory({
@@ -329,7 +333,7 @@ async function main(): Promise<void> {
     const results: CaseResult[] = [];
     for (const [index, { evalCase, label }] of selection.cases.entries()) {
       process.stdout.write(`[${index + 1}/${selection.cases.length}] ${label} ... `);
-      const result = await runCase(evalCase, services, catalog, gate, label, retryLog);
+      const result = await runCase(evalCase, services, catalog, gate, label, eventLog);
       results.push(result);
       console.log(
         result.infra ? 'INFRA (provedor sobrecarregado)' : result.passed ? 'ok' : 'FALHOU',
@@ -373,6 +377,9 @@ async function main(): Promise<void> {
     );
     console.log(
       `Retries 429/503: ${summary.totalRetries} no total (${Math.round(summary.totalRetryWaitMs)} ms de backoff, dentro da latência)`,
+    );
+    console.log(
+      `Timeouts de primeiro chunk: ${summary.totalTimeouts} no total; fallback usado ${summary.totalFallbacks} vez(es)`,
     );
     console.log(
       `Latência por resposta (sem a pausa): p50 ${Math.round(summary.latencyP50Ms)} ms, p95 ${Math.round(summary.latencyP95Ms)} ms`,

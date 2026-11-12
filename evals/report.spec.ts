@@ -29,6 +29,8 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
   embedCalls: 1,
   retries: 0,
   retryWaitMs: 0,
+  timeouts: 0,
+  fallbacks: 0,
   ...overrides,
 });
 
@@ -137,7 +139,9 @@ describe('LLM calls per case', () => {
 
   it('shows the counts in the terminal table', () => {
     expect(renderTerminalTable(rs)).toContain('chat  emb');
-    expect(renderTerminalTable(rs).split('\n')[1]).toMatch(/ {3}3 {2} {2}1 {2} {4}0$/);
+    expect(renderTerminalTable(rs).split('\n')[1]).toMatch(
+      / {3}3 {2} {2}1 {2} {4}0 {2} {6}0 {2} {7}0$/,
+    );
   });
 });
 
@@ -186,5 +190,19 @@ describe('retries', () => {
     expect(md).toContain('2 no total, somando 4000 ms');
     expect(md).toMatch(/`a` \| .* \| passou \| 2 \| 1 \| 2 \|/);
     expect(renderTerminalTable(rs)).toContain('retry');
+  });
+});
+
+describe('timeouts and fallbacks', () => {
+  const rs = [result({ id: 'a', timeouts: 2, fallbacks: 1 }), result({ id: 'b' })];
+
+  it('totals them in the summary and shows columns per case', () => {
+    const s = summarize(rs, info);
+    expect(s.totalTimeouts).toBe(2);
+    expect(s.totalFallbacks).toBe(1);
+    const md = renderMarkdown(rs, info);
+    expect(md).toContain('| Timeouts | Fallbacks |');
+    expect(md).toContain('Timeouts de primeiro chunk:** 2 no total');
+    expect(renderTerminalTable(rs)).toContain('timeout  fallback');
   });
 });

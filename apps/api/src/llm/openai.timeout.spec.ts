@@ -13,14 +13,13 @@ const input = (signal?: AbortSignal): LlmChatInput => ({
   signal,
 });
 
-const textChunk = (content: string): ChatCompletionChunk =>
-  ({
-    id: 'c',
-    object: 'chat.completion.chunk',
-    created: 0,
-    model: 'm',
-    choices: [{ index: 0, delta: { content }, finish_reason: null }],
-  }) as ChatCompletionChunk;
+const textChunk = (content: string): ChatCompletionChunk => ({
+  id: 'c',
+  object: 'chat.completion.chunk',
+  created: 0,
+  model: 'm',
+  choices: [{ index: 0, delta: { content }, finish_reason: null }],
+});
 
 /** Stream yielding `chunks`, waiting `delaysMs[i]` (fake timers) before chunk i. */
 async function* delayedStream(
@@ -62,7 +61,9 @@ const drain = async (gen: AsyncIterable<LlmStreamChunk>): Promise<LlmStreamChunk
 };
 
 const events = (logger: { warn: jest.Mock }): Record<string, unknown>[] =>
-  logger.warn.mock.calls.map((c) => JSON.parse(c[0] as string) as Record<string, unknown>);
+  (logger.warn.mock.calls as [string][]).map(
+    ([line]) => JSON.parse(line) as Record<string, unknown>,
+  );
 
 const modelOf = (create: jest.Mock, call: number): string =>
   (create.mock.calls[call] as [{ model: string }])[0].model;
