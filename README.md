@@ -145,6 +145,8 @@ pnpm db:embed        # embeddings reais (se o banco foi preparado com o provedor
 pnpm eval            # TEM CUSTO: chama a API da OpenAI
 ```
 
+Para respeitar o limite de requisições por minuto do plano gratuito do Gemini, o eval roda os casos em sequência e espera pelo menos `EVAL_DELAY_MS` (padrão 2000 ms) entre o início de chamadas consecutivas ao provedor, contando chat e embeddings. A pausa vale só com `LLM_PROVIDER=openai` (com `fake` é 0) e a execução imprime a pausa efetiva no início. Se aparecerem muitos 429, aumente o valor, por exemplo `EVAL_DELAY_MS=5000`.
+
 O custo estimado usa `EVAL_PRICE_INPUT_USD_PER_MTOK` e `EVAL_PRICE_OUTPUT_USD_PER_MTOK` (padrões para um modelo pequeno, em `.env.example`). O workflow manual `.github/workflows/eval.yml` faz o mesmo no GitHub Actions. Para publicar o deploy, siga [`docs/deploy.md`](docs/deploy.md).
 
 ## Estrutura de pastas
