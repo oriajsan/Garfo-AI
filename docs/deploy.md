@@ -45,7 +45,7 @@ Arquivos de configuração já prontos no repositório:
    ```
 
    Esperado no fim: `Seed ok: 6 restaurants, 80 dishes` e `Embeddings (...): 80 processed`.
-   Confirme: `psql "$DATABASE_URL" -c 'SELECT count(*) FROM "Dish" WHERE embedding IS NOT NULL;'` deve devolver 80 (79 se contar só os disponíveis).
+   Confirme: `psql "$DATABASE_URL" -c 'SELECT count(*) FROM "Dish" WHERE embedding IS NOT NULL;'` deve devolver 80.
 
 > Atenção: se você trocar de `fake` para `openai` depois, rode `pnpm db:embed` de novo. O hash inclui o modelo, então só os
 > vetores desatualizados são refeitos.
@@ -142,10 +142,10 @@ done; echo
 Checklist manual:
 
 - [ ] `$WEB` abre em menos de 5 s e mostra o chat (com "Modo demonstração" só se `LLM_PROVIDER=fake`).
-- [ ] Chip "Algo vegetariano até R$ 40" -> indicador de tool -> texto -> cards -> "Adicionar" -> carrinho atualiza -> "Finalizar pedido" -> número do pedido.
+- [ ] Chip "Algo vegetariano até R$ 40" -> indicador de tool -> texto -> cards -> "Adicionar" -> carrinho atualiza (o pedido mínimo do restaurante pode exigir 2 unidades: aumente para 2 e finalize) -> "Finalizar pedido" -> número do pedido.
 - [ ] Console do navegador sem erro de CORS.
 - [ ] Teto diário: para testar sem gastar, suba temporariamente `MAX_DAILY_CHAT_REQUESTS=1` no Railway, envie 2 mensagens (a segunda deve mostrar o aviso de limite do dia) e volte para `500`.
-- [ ] Teste pelo celular (dados móveis, não o Wi-Fi de casa): abra `$WEB`, use o botão flutuante do carrinho, finalize um pedido.
+- [ ] Teste pelo celular (dados móveis, não o Wi-Fi de casa): abra `$WEB`, use o botão flutuante do carrinho e finalize um pedido (se o pedido mínimo exigir, aumente para 2 unidades).
 - [ ] Link colado no LinkedIn mostra título e descrição (Open Graph).
 - [ ] Nenhum segredo no repositório: `git log -p | grep -i 'sk-'` não deve achar nada.
 
