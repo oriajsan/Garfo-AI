@@ -47,6 +47,18 @@ Arquivos de configuração já prontos no repositório:
    Esperado no fim: `Seed ok: 6 restaurants, 80 dishes` e `Embeddings (...): 80 processed`.
    Confirme: `psql "$DATABASE_URL" -c 'SELECT count(*) FROM "Dish" WHERE embedding IS NOT NULL;'` deve devolver 80.
 
+   O seed roda em uma transação interativa (atômica e idempotente) com cerca de 86 upserts. Contra o Neon, a latência
+   por consulta pode estourar o timeout padrão do Prisma (5 s) e dar `Transaction not found` / `Transaction already
+closed`. Por isso o seed usa `timeout` de 120000 ms e `maxWait` de 20000 ms. Se ainda estourar (rede lenta, banco
+   acordando), aumente com `SEED_TX_TIMEOUT_MS` e `SEED_TX_MAX_WAIT_MS` (inteiros positivos, em milissegundos; valor
+   inválido dá erro antes de conectar):
+
+   ```bash
+   SEED_TX_TIMEOUT_MS=300000 SEED_TX_MAX_WAIT_MS=30000 pnpm db:seed
+   ```
+
+   Se a transação estourar, nada é gravado (rollback); basta rodar de novo.
+
 > Atenção: se você trocar de `fake` para `openai` depois, rode `pnpm db:embed` de novo. O hash inclui o modelo, então só os
 > vetores desatualizados são refeitos.
 
