@@ -51,3 +51,14 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D3.7 · Erros antes do stream são JSON normal (400/429)**; depois que o stream abre, viram evento `error`.
 - **D3.8 · Teto diário contado no banco** (mensagens `USER` desde a meia-noite de São Paulo): sobrevive a reinícios e funciona com mais de uma instância.
 - **D3.9 · Modo demonstração heurístico.** Sem chave, o `FakeLlmProvider` usa uma política determinística (regex de filtros + `search_dishes`/`add_to_cart`) para a demo do `docker compose up` funcionar de ponta a ponta, com aviso na interface (SPEC seção 9: "respostas roteirizadas e aviso na interface").
+
+## Bloco 3 (decisões do implementer, aceitas pelo líder)
+
+- **D3.10 · Eventos tipados como `{ type, data }`** no `shared`; no fio, `event: <type>` e `data:` só com o payload da SPEC.
+- **D3.11 · Marcador malformado é removido** (ex.: `[[dish:123]]` ou `[[dish:` sem fechar no fim do stream) e contado como malformado: `[[dish:` nunca chega ao front.
+- **D3.12 · Histórico robusto:** além de começar em `USER`, descarta grupos `assistant`+`tool` incompletos.
+- **D3.13 · Pratos "vistos"** = objetos com `id`, `name` e `priceCents` em resultados de tools; itens de carrinho usam `itemId`/`dishId` para não contarem como prato visto.
+- **D3.14 · Abort pelo `res.on('close')`**, não `req.on('close')`: no Node 16+ o `close` do request dispara ao terminar de ler o corpo (explicado no ADR 004).
+- **D3.15 · Teto diário** com meia-noite de São Paulo em offset fixo −03:00 (sem horário de verão desde 2019).
+- **D3.16 · Códigos novos:** `CONVERSATION_NOT_FOUND` (404), `LLM_ERROR` (502), `TOOL_TIMEOUT` (504).
+- **D3.17 · Política demo** entende "adiciona o primeiro/segundo/terceiro" pela posição na última resposta com cards.
