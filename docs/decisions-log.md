@@ -62,3 +62,6 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D3.15 · Teto diário** com meia-noite de São Paulo em offset fixo −03:00 (sem horário de verão desde 2019).
 - **D3.16 · Códigos novos:** `CONVERSATION_NOT_FOUND` (404), `LLM_ERROR` (502), `TOOL_TIMEOUT` (504).
 - **D3.17 · Política demo** entende "adiciona o primeiro/segundo/terceiro" pela posição na última resposta com cards.
+- **D3.18 · JSON Schema das tools em draft 7** (`target: 'jsonSchema7'`), com teste que barra `$ref`, `$schema` e `exclusiveMinimum` booleano. O alvo `openApi3` gerava a forma booleana do draft 4, que a OpenAI pode rejeitar.
+- **D3.19 · "barato/barata/em conta" no modo demo = até R$ 25**, para o chip "Uma sobremesa barata" funcionar sem chave.
+- **D3.20 · Limitações aceitas do modo demo:** não recusa assuntos fora de comida (isso é papel do LLM real, regra 8 do prompt); o timeout de tool não cancela o handler; o teto diário não conta rodadas abortadas. Registradas para a revisão final.
