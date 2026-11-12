@@ -30,5 +30,11 @@ export function createLlmProvider(env: Env): LlmProvider {
     createOpenAiClient(env),
     env.LLM_CHAT_MODEL as string,
     env.OPENAI_BASE_URL !== undefined,
+    {},
+    {
+      reasoningEffort: env.LLM_REASONING_EFFORT,
+      timeoutMs: env.LLM_CALL_TIMEOUT_MS,
+      fallbackModel: env.LLM_FALLBACK_MODEL,
+    },
   );
 }

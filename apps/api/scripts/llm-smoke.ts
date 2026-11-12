@@ -73,8 +73,19 @@ async function main(): Promise<void> {
     env.OPENAI_BASE_URL === undefined ? 800 : Math.max(800, COMPATIBLE_MIN_MAX_TOKENS);
 
   const history: ChatMessage[] = [{ role: 'user', content: QUESTION }];
-  const request = (messages: ChatMessage[]) => ({
-    model,
+  // Same rule as production (D6.14): only compatible endpoints get `reasoning_effort`. If the
+  // provider rejects the value, change LLM_REASONING_EFFORT and run this again.
+  const reasoning =
+    env.OPENAI_BASE_URL === undefined
+      ? {}
+      : // The SDK types only know low/medium/high.
+        { reasoning_effort: env.LLM_REASONING_EFFORT as 'low' };
+  if (env.OPENAI_BASE_URL !== undefined) {
+    console.log(`reasoning_effort: ${env.LLM_REASONING_EFFORT}`);
+  }
+  const request = (messages: ChatMessage[], requestModel = model) => ({
+    model: requestModel,
+    ...reasoning,
     messages: toOpenAiMessages(system, messages),
     tools: toOpenAiTools(tools),
     temperature: 0.3,
@@ -120,6 +131,19 @@ async function main(): Promise<void> {
   const response2 = await client.chat.completions.create(second);
   show('RESPONSE 2', response2, apiKey);
   console.log(`\nFINAL ANSWER:\n${response2.choices[0]?.message?.content ?? '(empty)'}`);
+
+  const fallbackModel = env.LLM_FALLBACK_MODEL;
+  if (fallbackModel !== undefined) {
+    // Risk of the fallback (ADR 006): the history carries the main model's thought signatures
+    // and we resend them as received to another model. This request shows whether it accepts.
+    const crossModel = request(history, fallbackModel);
+    show(`REQUEST 2b (same history, fallback model ${fallbackModel})`, crossModel, apiKey);
+    const response2b = await client.chat.completions.create(crossModel);
+    show('RESPONSE 2b', response2b, apiKey);
+    console.log(
+      `\nFALLBACK ANSWER (thought signatures of ${model} accepted by ${fallbackModel}):\n${response2b.choices[0]?.message?.content ?? '(empty)'}`,
+    );
+  }
 
   const embedder = createEmbeddingProvider(env);
   const embedRequest = {

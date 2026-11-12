@@ -4,7 +4,7 @@ import { type CartService } from '../cart/cart.service';
 import { type SearchService } from '../catalog/search.service';
 import { DomainError } from '../common/domain-error';
 import { FakeLlmProvider, type FakeTurn } from '../llm/fake-llm.provider';
-import { LlmOverloadedError } from '../llm/llm.errors';
+import { LlmOverloadedError, LlmTimeoutError } from '../llm/llm.errors';
 import { type LlmChatInput, type LlmProvider, type LlmStreamChunk } from '../llm/llm.types';
 import { DISH_1, DISH_2, emptyCart, makeCart, makeDish, UNKNOWN_DISH } from '../testing/fixtures';
 import { ToolRegistry } from '../tools/tool.registry';
@@ -14,6 +14,7 @@ import {
   ITERATION_LIMIT_TEXT,
   LLM_ERROR_TEXT,
   LLM_OVERLOADED_TEXT,
+  LLM_TIMEOUT_TEXT,
   MAX_ITERATIONS,
 } from './agent.service';
 import { ConversationRepository, type MessageRecord } from './conversation.repository';
@@ -415,6 +416,25 @@ describe('AgentService', () => {
     expect(s.events.at(-1)).toEqual({
       type: 'error',
       data: { code: 'LLM_OVERLOADED', message: LLM_OVERLOADED_TEXT },
+    });
+    expect(s.conversations.saveRound).not.toHaveBeenCalled();
+  });
+
+  it('turns a final LlmTimeoutError into an LLM_TIMEOUT event and persists nothing', async () => {
+    const provider: LlmProvider = {
+      chat: () => ({
+        [Symbol.asyncIterator]: () => ({
+          next: (): Promise<IteratorResult<LlmStreamChunk>> =>
+            Promise.reject(new LlmTimeoutError('m', 15000, 2)),
+        }),
+      }),
+    };
+    const s = setup(provider);
+    await s.run();
+
+    expect(s.events.at(-1)).toEqual({
+      type: 'error',
+      data: { code: 'LLM_TIMEOUT', message: LLM_TIMEOUT_TEXT },
     });
     expect(s.conversations.saveRound).not.toHaveBeenCalled();
   });

@@ -40,4 +40,25 @@ describe('validateEnv', () => {
     expect(validateEnv({ ...base, OPENAI_BASE_URL: url }).OPENAI_BASE_URL).toBe(url);
     expect(() => validateEnv({ ...base, OPENAI_BASE_URL: 'not a url' })).toThrow(/OPENAI_BASE_URL/);
   });
+
+  it('validates LLM_REASONING_EFFORT, LLM_CALL_TIMEOUT_MS and LLM_FALLBACK_MODEL', () => {
+    const defaults = validateEnv({ ...base });
+    expect(defaults.LLM_REASONING_EFFORT).toBe('minimal');
+    expect(defaults.LLM_CALL_TIMEOUT_MS).toBe(15000);
+    expect(defaults.LLM_FALLBACK_MODEL).toBeUndefined();
+    const set = validateEnv({
+      ...base,
+      LLM_REASONING_EFFORT: 'none',
+      LLM_CALL_TIMEOUT_MS: '8000',
+      LLM_FALLBACK_MODEL: 'gemini-3.1-flash-lite',
+    });
+    expect(set.LLM_REASONING_EFFORT).toBe('none');
+    expect(set.LLM_CALL_TIMEOUT_MS).toBe(8000);
+    expect(set.LLM_FALLBACK_MODEL).toBe('gemini-3.1-flash-lite');
+    expect(validateEnv({ ...base, LLM_REASONING_EFFORT: '' }).LLM_REASONING_EFFORT).toBe('minimal');
+    expect(() => validateEnv({ ...base, LLM_REASONING_EFFORT: 'extreme' })).toThrow(
+      /LLM_REASONING_EFFORT/,
+    );
+    expect(() => validateEnv({ ...base, LLM_CALL_TIMEOUT_MS: '0' })).toThrow(/LLM_CALL_TIMEOUT_MS/);
+  });
 });

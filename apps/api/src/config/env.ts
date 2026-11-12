@@ -26,6 +26,15 @@ export const envSchema = z
     OPENAI_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     LLM_CHAT_MODEL: optionalString,
     LLM_EMBEDDING_MODEL: optionalString,
+    /** Sent as `reasoning_effort` only when OPENAI_BASE_URL is set (D6.14). */
+    LLM_REASONING_EFFORT: z.preprocess(
+      emptyToUndefined,
+      z.enum(['none', 'minimal', 'low', 'medium', 'high']).default('minimal'),
+    ),
+    /** Max wait for the FIRST chunk of a chat call, per call (D6.15). */
+    LLM_CALL_TIMEOUT_MS: z.preprocess(toNumber, z.number().int().positive().default(15000)),
+    /** Optional model used once when the main one times out. Unset = no fallback. */
+    LLM_FALLBACK_MODEL: optionalString,
     EMBEDDING_DIMENSIONS: z.preprocess(
       toNumber,
       z

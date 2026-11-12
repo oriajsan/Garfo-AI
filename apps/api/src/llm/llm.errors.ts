@@ -9,3 +9,20 @@ export class LlmOverloadedError extends Error {
     this.name = 'LlmOverloadedError';
   }
 }
+
+/**
+ * Thrown when no first chunk arrived within the per-call timeout, on the main model and on the
+ * fallback (if any) (code LLM_TIMEOUT).
+ */
+export class LlmTimeoutError extends Error {
+  constructor(
+    readonly model: string,
+    readonly timeoutMs: number,
+    readonly attempts: number,
+  ) {
+    super(
+      `LLM provider gave no first chunk within ${timeoutMs} ms (model ${model}, ${attempts} attempt(s))`,
+    );
+    this.name = 'LlmTimeoutError';
+  }
+}
