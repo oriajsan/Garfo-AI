@@ -19,6 +19,8 @@ const observation = (overrides: Partial<Observation> = {}): Observation => ({
   cardIdsPerReply: [[]],
   dishes: new Map(),
   cartItems: [],
+  cartRestaurantIdsPerTurn: [[]],
+  finalReplyText: '',
   hallucinatedIds: [],
   runErrors: [],
   ...overrides,
@@ -251,6 +253,83 @@ describe('evaluateCase', () => {
     const c = baseCase({ noHallucinatedDishes: true });
     expect(evaluateCase(c, observation()).passed).toBe(true);
     expect(failed(c, observation({ hallucinatedIds: ['zzz'] }))).toEqual(['noHallucinatedDishes']);
+  });
+});
+
+describe('restaurant conflict outcome checks', () => {
+  const c = baseCase({
+    mustCallTools: ['add_to_cart'],
+    cartNeverMixesRestaurants: true,
+    finalReplyMentions: {
+      allOf: [['restaurante'], ['outro', 'diferente', 'esvaziar', 'unico']],
+    },
+  });
+  const add = { name: 'add_to_cart', args: {} };
+  const base = {
+    cartItems: [{ dishName: 'A', quantity: 1 }],
+    cartRestaurantIdsPerTurn: [['r1'], ['r1']],
+  };
+
+  it('passes when the second add was tried and refused', () => {
+    const o = observation({
+      ...base,
+      toolCalls: [add, add],
+      finalReplyText: 'Nao consegui: seu carrinho e de outro restaurante. Quer esvaziar?',
+    });
+    expect(evaluateCase(c, o).passed).toBe(true);
+  });
+
+  it('passes when the model asked before trying (single add call)', () => {
+    const o = observation({
+      ...base,
+      toolCalls: [add],
+      finalReplyText:
+        'Seu carrinho tem itens de um restaurante diferente. Posso esvaziar? [[dish:x]]',
+    });
+    expect(evaluateCase(c, o).passed).toBe(true);
+  });
+
+  it('fails when the cart mixed restaurants in any turn, naming the turn', () => {
+    const o = observation({
+      ...base,
+      cartRestaurantIdsPerTurn: [['r1'], ['r1', 'r2']],
+      toolCalls: [add],
+      finalReplyText: 'outro restaurante, esvaziar',
+    });
+    const result = evaluateCase(c, o);
+    expect(result.checks.filter((k) => !k.passed).map((k) => k.name)).toEqual([
+      'cartNeverMixesRestaurants',
+    ]);
+    expect(result.checks.find((k) => k.name === 'cartNeverMixesRestaurants')?.detail).toContain(
+      'turn 2',
+    );
+  });
+
+  it('fails when the final reply does not mention the conflict', () => {
+    const o = observation({
+      ...base,
+      toolCalls: [add],
+      finalReplyText: 'Pronto, adicionei! [[dish:x]]',
+    });
+    expect(failed(c, o)).toEqual(['finalReplyMentions']);
+    expect(
+      failed(c, observation({ ...base, toolCalls: [add], finalReplyText: 'so o restaurante' })),
+    ).toEqual(['finalReplyMentions']);
+  });
+
+  it('ignores case, accents and dish markers when matching', () => {
+    const o = observation({
+      ...base,
+      toolCalls: [add],
+      finalReplyText: 'RESTAURANTE [[dish:outro]] \u00DANICO por vez',
+    });
+    expect(evaluateCase(c, o).passed).toBe(true);
+    const onlyMarker = observation({
+      ...base,
+      toolCalls: [add],
+      finalReplyText: 'restaurante [[dish:outro]]',
+    });
+    expect(failed(c, onlyMarker)).toEqual(['finalReplyMentions']);
   });
 });
 

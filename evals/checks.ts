@@ -34,6 +34,10 @@ export interface Observation {
   dishes: ReadonlyMap<string, DishFacts>;
   /** Final cart, as (dish name, quantity) pairs. */
   cartItems: Array<{ dishName: string; quantity: number }>;
+  /** Restaurant id of each cart item, captured after every user turn (one entry per turn). */
+  cartRestaurantIdsPerTurn: string[][];
+  /** Text of the last assistant reply, with `[[dish:id]]` markers still in it. */
+  finalReplyText: string;
   /** `[[dish:id]]` markers written by the model that no tool result of the conversation held. */
   hallucinatedIds: string[];
   /** Messages of `error` events or exceptions: a run with any of these cannot pass. */
@@ -128,7 +132,52 @@ export function evaluateCase(evalCase: EvalCase, observation: Observation): Case
     });
   }
 
+  if (expect.cartNeverMixesRestaurants) {
+    checks.push(checkCartNeverMixes(observation.cartRestaurantIdsPerTurn));
+  }
+  if (expect.finalReplyMentions) {
+    checks.push(checkFinalReply(expect.finalReplyMentions.allOf, observation.finalReplyText));
+  }
+
   return { passed: checks.every((c) => c.passed), checks };
+}
+
+// ---------- outcome checks for the restaurant conflict ----------
+
+function checkCartNeverMixes(perTurn: string[][]): CheckResult {
+  const badTurn = perTurn.findIndex((ids) => new Set(ids).size > 1);
+  return {
+    name: 'cartNeverMixesRestaurants',
+    passed: badTurn === -1,
+    detail:
+      badTurn === -1
+        ? `cart held a single restaurant after each of ${perTurn.length} turn(s)`
+        : `after turn ${badTurn + 1} the cart mixed ${new Set(perTurn[badTurn]).size} restaurants`,
+  };
+}
+
+/** Lowercase, no diacritics, no dish markers: the text the `finalReplyMentions` check reads. */
+export function normalizeText(text: string): string {
+  return text
+    .replace(/\[\[dish:[^\]]*\]\]/g, ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function checkFinalReply(groups: string[][], reply: string): CheckResult {
+  const text = normalizeText(reply);
+  const missing = groups.filter(
+    (group) => !group.some((word) => text.includes(normalizeText(word))),
+  );
+  return {
+    name: 'finalReplyMentions',
+    passed: missing.length === 0,
+    detail:
+      missing.length === 0
+        ? 'final reply mentions the conflict'
+        : `final reply lacks any of: ${missing.map((g) => `[${g.join(' | ')}]`).join(' and ')}`,
+  };
 }
 
 // ---------- tool arguments ----------

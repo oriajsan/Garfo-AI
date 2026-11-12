@@ -113,6 +113,7 @@ async function runCase(
   const sessionId = randomUUID();
   const runErrors: string[] = [];
   const cardIdsPerReply: string[][] = [];
+  const cartDishIdsPerTurn: string[][] = [];
   const latenciesMs: number[] = [];
   let inputTokens = 0;
   let outputTokens = 0;
@@ -147,6 +148,8 @@ async function runCase(
       }
       if (!done && runErrors.length === 0) runErrors.push('turn did not finish (timeout)');
       cardIdsPerReply.push([...cards]);
+      const turnCart = await carts.getCart(sessionId);
+      cartDishIdsPerTurn.push(turnCart.items.map((item) => item.dishId));
       if (runErrors.length > 0) break;
     }
 
@@ -158,6 +161,7 @@ async function runCase(
     const toolCalls: Observation['toolCalls'] = [];
     const seen = new Map<string, string>();
     const cited: string[] = [];
+    let finalReplyText = '';
     for (const row of rows) {
       const content = row.content as Record<string, unknown>;
       if (row.role === 'ASSISTANT') {
@@ -166,6 +170,7 @@ async function runCase(
           toolCalls.push({ name: call.name, args: safeParse(call.argsJson) });
         }
         const text = typeof content.text === 'string' ? content.text : '';
+        finalReplyText = text;
         for (const match of text.matchAll(MARKER)) cited.push(match[1] ?? '');
       } else if (row.role === 'TOOL') {
         collectDishRefs(content.result, seen);
@@ -173,11 +178,23 @@ async function runCase(
     }
 
     const cart = await carts.getCart(sessionId);
+    const dishRestaurants = new Map(
+      (
+        await prisma.dish.findMany({
+          where: { id: { in: [...new Set(cartDishIdsPerTurn.flat())] } },
+          select: { id: true, restaurantId: true },
+        })
+      ).map((d) => [d.id, d.restaurantId]),
+    );
     const observation: Observation = {
       toolCalls,
       cardIdsPerReply,
       dishes: catalog,
       cartItems: cart.items.map((item) => ({ dishName: item.name, quantity: item.quantity })),
+      cartRestaurantIdsPerTurn: cartDishIdsPerTurn.map((ids) =>
+        ids.map((id) => dishRestaurants.get(id) ?? `unknown:${id}`),
+      ),
+      finalReplyText,
       hallucinatedIds: [...new Set(cited.filter((id) => !seen.has(id)))],
       runErrors,
     };

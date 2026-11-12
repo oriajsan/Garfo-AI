@@ -28,7 +28,10 @@ describe('cases.json', () => {
   it('makes conflict and injection cases discriminative', () => {
     const cases = evalCasesFileSchema.parse(raw);
     for (const c of cases.filter((x) => x.category === 'restaurant_conflict')) {
-      expect(c.expect.minToolCalls?.add_to_cart).toBeGreaterThanOrEqual(2);
+      expect(c.expect.minToolCalls).toBeUndefined();
+      expect(c.expect.mustCallTools).toContain('add_to_cart');
+      expect(c.expect.cartNeverMixesRestaurants).toBe(true);
+      expect(c.expect.finalReplyMentions?.allOf.length).toBeGreaterThanOrEqual(2);
       expect(c.expect.mustNotCallTools).toContain('clear_cart');
       expect(c.expect.cartAfter).toBeDefined();
     }

@@ -400,7 +400,7 @@
   {
     "id": "conflict-sushi-then-pizza",
     "category": "restaurant_conflict",
-    "description": "Com temaki no carrinho, pedir pizza (outro restaurante) deve explicar o conflito sem esvaziar o carrinho. Exige ao menos 2 chamadas de add_to_cart (a segunda tentativa deve ocorrer e ser recusada).",
+    "description": "Com temaki no carrinho, pedir pizza (outro restaurante) deve explicar o conflito sem esvaziar o carrinho. Avalia o resultado, não a ordem: o carrinho nunca mistura restaurantes e a resposta final menciona o conflito (tanto faz tentar e ser recusado quanto perguntar antes).",
     "input": ["Quero 1 temaki de salmão no carrinho", "Agora adiciona também 1 pizza margherita"],
     "expect": {
       "mustCallTools": ["add_to_cart"],
@@ -415,15 +415,32 @@
       },
       "maxRecommendations": 3,
       "noHallucinatedDishes": true,
-      "minToolCalls": {
-        "add_to_cart": 2
+      "cartNeverMixesRestaurants": true,
+      "finalReplyMentions": {
+        "allOf": [
+          ["restaurante"],
+          [
+            "outro",
+            "outra",
+            "diferente",
+            "mesmo",
+            "um por vez",
+            "um restaurante",
+            "unico",
+            "so pode",
+            "apenas",
+            "esvaziar",
+            "limpar",
+            "trocar"
+          ]
+        ]
       }
     }
   },
   {
     "id": "conflict-burger-then-hummus",
     "category": "restaurant_conflict",
-    "description": "Hambúrguer no carrinho e um prato árabe em seguida: o carrinho continua só com o hambúrguer. Exige ao menos 2 chamadas de add_to_cart (a segunda tentativa deve ocorrer e ser recusada).",
+    "description": "Hambúrguer no carrinho e um prato árabe em seguida: o carrinho continua só com o hambúrguer. Avalia o resultado, não a ordem: o carrinho nunca mistura restaurantes e a resposta final menciona o conflito (tanto faz tentar e ser recusado quanto perguntar antes).",
     "input": [
       "Quero adicionar 1 Burger Brasa clássico ao carrinho",
       "Coloca também 1 homus com pão sírio"
@@ -441,8 +458,25 @@
       },
       "maxRecommendations": 3,
       "noHallucinatedDishes": true,
-      "minToolCalls": {
-        "add_to_cart": 2
+      "cartNeverMixesRestaurants": true,
+      "finalReplyMentions": {
+        "allOf": [
+          ["restaurante"],
+          [
+            "outro",
+            "outra",
+            "diferente",
+            "mesmo",
+            "um por vez",
+            "um restaurante",
+            "unico",
+            "so pode",
+            "apenas",
+            "esvaziar",
+            "limpar",
+            "trocar"
+          ]
+        ]
       }
     }
   },

@@ -115,6 +115,16 @@ export const expectationsSchema = z
     cartAfter: cartAfterSchema.optional(),
     /** Every `[[dish:id]]` the model wrote must come from a tool result of the conversation. */
     noHallucinatedDishes: z.boolean().optional(),
+    /** After every user turn, all items in the cart belong to the same restaurant. */
+    cartNeverMixesRestaurants: z.boolean().optional(),
+    /**
+     * The final assistant reply (dish markers removed) must match every group. Each inner list
+     * holds alternatives, one is enough. Case- and accent-insensitive.
+     */
+    finalReplyMentions: z
+      .object({ allOf: z.array(z.array(z.string().min(1)).min(1)).min(1) })
+      .strict()
+      .optional(),
   })
   .strict();
 export type Expectations = z.infer<typeof expectationsSchema>;
