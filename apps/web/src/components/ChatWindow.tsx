@@ -141,14 +141,14 @@ export function ChatWindow() {
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Ex.: algo vegetariano até R$ 40"
-            className="max-h-36 min-h-[2.5rem] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-relaxed outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500"
+            className="max-h-36 min-h-[2.5rem] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-relaxed outline-none placeholder:text-stone-500 dark:placeholder:text-stone-400"
           />
           <span
             className={clsx(
               'mb-2.5 hidden text-xs tabular-nums sm:block',
               draft.length > MAX_MESSAGE_LENGTH - 50
                 ? 'text-amber-700 dark:text-amber-400'
-                : 'text-stone-400',
+                : 'text-stone-500 dark:text-stone-400',
             )}
             aria-label={`${draft.length} de ${MAX_MESSAGE_LENGTH} caracteres`}
           >
@@ -174,7 +174,7 @@ export function ChatWindow() {
             </button>
           )}
         </form>
-        <p className="mx-auto mt-1.5 hidden max-w-3xl px-1 text-xs text-stone-400 sm:block dark:text-stone-500">
+        <p className="mx-auto mt-1.5 hidden max-w-3xl px-1 text-xs text-stone-500 sm:block dark:text-stone-400">
           Enter envia, Shift+Enter quebra linha.
         </p>
       </div>

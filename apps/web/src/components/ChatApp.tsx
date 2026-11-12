@@ -36,7 +36,7 @@ export function ChatApp() {
       {demo && (
         <p
           role="status"
-          className="shrink-0 border-b border-brand-200 bg-brand-50 px-4 py-1.5 text-center text-xs text-brand-900 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-brand-200"
+          className="shrink-0 border-b border-brand-200 bg-brand-50 px-4 py-1.5 text-center text-xs text-brand-900 dark:border-brand-900/60 dark:bg-brand-900/40 dark:text-brand-200"
         >
           Modo demonstração: respostas roteirizadas, sem IA real.
         </p>
