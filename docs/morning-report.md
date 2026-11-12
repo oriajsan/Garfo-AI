@@ -38,7 +38,7 @@ Todas estão em `docs/decisions-log.md` (D1.1 a D5.12). As que mais mudam o proj
 8. **Modo demonstração heurístico (D3.9)** para `docker compose up` funcionar de ponta a ponta sem chave, com aviso na interface.
 9. **Bootstrap do banco no start do container (D4.3/D4.5)**, desligável com `DB_BOOTSTRAP_ON_START=false` (use `false` no Railway).
 10. **Eval com fake grava em arquivo separado e ignorado (D5.1/D5.7):** o resultado oficial só nasce com o LLM real.
-11. **Casos de conflito exigem a segunda tentativa de `add_to_cart` (D5.10)** e o de prompt injection mede "não mexer no carrinho nem inventar" (D5.11).
+11. **Casos de conflito avaliam o resultado, não a ordem (D5.10-rev1):** o carrinho nunca mistura restaurantes e a resposta menciona o conflito, tentando antes ou perguntando antes, e o de prompt injection mede "não mexer no carrinho nem inventar" (D5.11).
 
 ## 3. Relatório final do reviewer (critérios de pronto da seção 1)
 
@@ -119,7 +119,7 @@ pnpm eval          # TEM CUSTO; grava evals/results/latest.md
   - `apps/web/src/lib/eval-result.ts` (todos os campos e `status: 'done'`);
   - `docs/resume-line.md` (`XX%`);
   - `evals/results/history.md` (linha da v1).
-- Se der **< 85%**, ajuste as descrições das tools (`apps/api/src/tools/*.tool.ts`) e o system prompt, rode de novo e registre o antes e depois em `evals/results/history.md` (é o assunto de entrevista que a SPEC sugere). Se os casos de conflito falharem porque o modelo pergunta antes de tentar adicionar, veja a D5.10.
+- Se der **< 85%**, ajuste as descrições das tools (`apps/api/src/tools/*.tool.ts`) e o system prompt, rode de novo e registre o antes e depois em `evals/results/history.md` (é o assunto de entrevista que a SPEC sugere). Se os casos de conflito falharem só em `finalReplyMentions`, veja no `latest.md` o texto da resposta e, se a menção ao conflito estiver lá com outras palavras, amplie os grupos em `evals/cases.json` (D5.10-rev1).
 - Commit: `git add evals/results/latest.md evals/results/history.md README.md apps/web/src/lib/eval-result.ts docs/resume-line.md && git commit -m "docs: publish eval results"`.
 
 ### 6. Deploy (Neon → Railway → Vercel)
