@@ -42,6 +42,24 @@ export interface Observation {
   hallucinatedIds: string[];
   /** Messages of `error` events or exceptions: a run with any of these cannot pass. */
   runErrors: string[];
+  /** Set when the last turn did not finish: how it ended and which tools had already run. */
+  interruption?: TurnInterruption;
+}
+
+/** A turn cut short (error event, exception or eval timeout). Its tool trace is still real. */
+export interface TurnInterruption {
+  /** Error code (`LLM_TIMEOUT`, ...), `EXCEPTION` or `EVAL_TIMEOUT`. */
+  reason: string;
+  /** Tools the turn had started before it was interrupted, in order. */
+  toolsRun: string[];
+}
+
+export function describeInterruption(interruption: TurnInterruption): string {
+  const after =
+    interruption.toolsRun.length > 0
+      ? `depois de: ${interruption.toolsRun.join(', ')}`
+      : 'antes de qualquer tool';
+  return `turno interrompido (${interruption.reason}) ${after}`;
 }
 
 export interface CheckResult {
@@ -87,7 +105,8 @@ export function evaluateCase(evalCase: EvalCase, observation: Observation): Case
     detail:
       observation.runErrors.length === 0
         ? 'no error events'
-        : `error: ${observation.runErrors.join('; ')}`,
+        : `error: ${observation.runErrors.join('; ')}` +
+          (observation.interruption ? `; ${describeInterruption(observation.interruption)}` : ''),
   });
 
   const called = new Set(observation.toolCalls.map((c) => c.name));

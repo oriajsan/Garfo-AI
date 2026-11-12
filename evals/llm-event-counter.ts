@@ -2,8 +2,8 @@ import { ConsoleLogger } from '@nestjs/common';
 
 /**
  * Non-intrusive observer for the structured warnings the production code already logs
- * (`llm_retry`, `llm_timeout`, `llm_fallback`); production is untouched. Installed with
- * `Logger.overrideLogger`; everything is still forwarded to the normal console logger.
+ * (`llm_retry`, `llm_timeout`, `llm_fallback`); production is untouched. Installed with the
+ * testing module builder's `setLogger` (`compile()` replaces a plain `Logger.overrideLogger`); warnings and errors are still forwarded to the console.
  * Snapshot the counters around a case to get its numbers.
  */
 export class LlmEventCountingLogger extends ConsoleLogger {
@@ -31,6 +31,12 @@ export class LlmEventCountingLogger extends ConsoleLogger {
   get fallbacks(): number {
     return this.fallbackCount;
   }
+
+  // Same quiet level as Nest's TestingLogger (what `compile()` would otherwise install):
+  // only warnings and errors reach the console.
+  override log(): void {}
+  override debug(): void {}
+  override verbose(): void {}
 
   override warn(message: unknown, ...rest: unknown[]): void {
     this.observe(message);

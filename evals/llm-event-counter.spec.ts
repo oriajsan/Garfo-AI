@@ -1,3 +1,5 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
 import { LlmEventCountingLogger } from './llm-event-counter';
 
 describe('LlmEventCountingLogger', () => {
@@ -32,5 +34,41 @@ describe('LlmEventCountingLogger', () => {
     logger.warn('{"event":"other"}');
     logger.warn('"llm_retry" but not json');
     expect(logger.count).toBe(0);
+  });
+});
+
+describe('LlmEventCountingLogger and the Nest testing module', () => {
+  @Injectable()
+  class Emitter {
+    private readonly logger = new Logger('LlmTimeout');
+    fire(): void {
+      this.logger.warn(
+        JSON.stringify({ event: 'llm_timeout', model: 'm', elapsedMs: 1, attempt: 1 }),
+      );
+    }
+  }
+
+  beforeEach(() => {
+    jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  // Root cause of "0 timeouts" in the real eval: compile() installs the silent TestingLogger.
+  it('loses warnings when only Logger.overrideLogger is called before compile()', async () => {
+    const logger = new LlmEventCountingLogger();
+    Logger.overrideLogger(logger);
+    const moduleRef = await Test.createTestingModule({ providers: [Emitter] }).compile();
+    moduleRef.get(Emitter).fire();
+    expect(logger.timeouts).toBe(0);
+  });
+
+  it('counts them when installed through setLogger', async () => {
+    const logger = new LlmEventCountingLogger();
+    const moduleRef = await Test.createTestingModule({ providers: [Emitter] })
+      .setLogger(logger)
+      .compile();
+    moduleRef.get(Emitter).fire();
+    expect(logger.timeouts).toBe(1);
   });
 });

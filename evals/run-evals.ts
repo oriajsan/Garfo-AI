@@ -1,7 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { z } from 'zod';
 import { AppModule } from '../apps/api/src/app.module';
@@ -13,15 +11,9 @@ import { validateEnv } from '../apps/api/src/config/env';
 import { createEmbeddingProvider, createLlmProvider } from '../apps/api/src/llm/llm.factory';
 import { EMBEDDING_PROVIDER, LLM_PROVIDER } from '../apps/api/src/llm/llm.tokens';
 import { PrismaService } from '../apps/api/src/prisma/prisma.service';
-import { collectDishRefs } from '../apps/api/src/tools/tool.format';
-import {
-  dishViolations,
-  evaluateCase,
-  isInfrastructureFailure,
-  type DishFacts,
-  type Observation,
-  type RunFailure,
-} from './checks';
+import { SearchService } from '../apps/api/src/catalog/search.service';
+import { ToolRegistry } from '../apps/api/src/tools/tool.registry';
+import { dishViolations, type DishFacts } from './checks';
 import {
   DEFAULT_PRICE_INPUT_USD_PER_MTOK,
   DEFAULT_PRICE_OUTPUT_USD_PER_MTOK,
@@ -33,14 +25,10 @@ import {
   type CaseResult,
   type RunInfo,
 } from './report';
-import {
-  discountWait,
-  PacedEmbeddingProvider,
-  PacedLlmProvider,
-  parseEvalDelayMs,
-  RateGate,
-} from './rate-gate';
+import { PacedEmbeddingProvider, PacedLlmProvider, parseEvalDelayMs, RateGate } from './rate-gate';
 import { LlmEventCountingLogger } from './llm-event-counter';
+import { runCase, type Services } from './run-case';
+import { ToolTrace, TracingToolRegistry } from './tool-trace';
 import { selectCases } from './select';
 import { evalCasesFileSchema, type EvalCase } from './schema';
 
@@ -49,8 +37,6 @@ import { evalCasesFileSchema, type EvalCase } from './schema';
  * `AgentService` with a fresh anonymous session, and turns each expectation into a check
  * computed by code (no LLM as judge). See evals/README in docs and SPEC section 8.
  */
-const TURN_TIMEOUT_MS = 90_000;
-const MARKER = /\[\[dish:([^\]]*)\]\]/g;
 
 const priceSchema = (fallback: number) =>
   z.preprocess(
@@ -122,157 +108,6 @@ function printCatalogStats(cases: EvalCase[], catalog: DishFacts[]): void {
   console.log('');
 }
 
-interface Services {
-  agent: AgentService;
-  conversations: ConversationRepository;
-  carts: CartService;
-  prisma: PrismaService;
-}
-
-async function runCase(
-  evalCase: EvalCase,
-  services: Services,
-  catalog: ReadonlyMap<string, DishFacts>,
-  gate: RateGate,
-  label: string,
-  eventLog: LlmEventCountingLogger,
-): Promise<CaseResult> {
-  const { agent, conversations, carts, prisma } = services;
-  const sessionId = randomUUID();
-  const runErrors: string[] = [];
-  const failure: RunFailure = { errorCodes: [], httpStatuses: [] };
-  const cardIdsPerReply: string[][] = [];
-  const cartDishIdsPerTurn: string[][] = [];
-  const latenciesMs: number[] = [];
-  const callsBefore = gate.calls;
-  const retriesBefore = eventLog.count;
-  const retryWaitBefore = eventLog.waitMs;
-  const timeoutsBefore = eventLog.timeouts;
-  const fallbacksBefore = eventLog.fallbacks;
-  let finalReplyText = '';
-  let inputTokens = 0;
-  let outputTokens = 0;
-
-  try {
-    const conversationId = await conversations.resolve(sessionId);
-    for (const message of evalCase.input) {
-      const cards = new Set<string>();
-      const abort = new AbortController();
-      const timer = setTimeout(() => abort.abort(), TURN_TIMEOUT_MS);
-      let done = false;
-      const waitedBefore = gate.waitedMs;
-      try {
-        await agent.run(
-          { sessionId, conversationId, message },
-          (event) => {
-            if (event.type === 'dish_cards') for (const d of event.data.dishes) cards.add(d.id);
-            else if (event.type === 'error') {
-              failure.errorCodes.push(event.data.code);
-              runErrors.push(`${event.data.code}: ${event.data.message}`);
-            } else if (event.type === 'done') {
-              done = true;
-              inputTokens += event.data.usage.inputTokens;
-              outputTokens += event.data.usage.outputTokens;
-              // The gate's pacing sleeps happen inside the turn: not agent latency.
-              latenciesMs.push(discountWait(event.data.latencyMs, gate.waitedMs - waitedBefore));
-            }
-          },
-          abort.signal,
-        );
-      } catch (error) {
-        const status = (error as { status?: unknown } | null)?.status;
-        if (typeof status === 'number') failure.httpStatuses.push(status);
-        runErrors.push(error instanceof Error ? error.message : String(error));
-      } finally {
-        clearTimeout(timer);
-      }
-      if (!done && runErrors.length === 0) runErrors.push('turn did not finish (timeout)');
-      cardIdsPerReply.push([...cards]);
-      const turnCart = await carts.getCart(sessionId);
-      cartDishIdsPerTurn.push(turnCart.items.map((item) => item.dishId));
-      if (runErrors.length > 0) break;
-    }
-
-    // What the model really asked for lives in the persisted rows (assistant toolCalls).
-    const rows = await prisma.message.findMany({
-      where: { conversationId },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    });
-    const toolCalls: Observation['toolCalls'] = [];
-    const seen = new Map<string, string>();
-    const cited: string[] = [];
-    let lastTurnTexts: string[] = [];
-    for (const row of rows) {
-      const content = row.content as Record<string, unknown>;
-      if (row.role === 'USER') lastTurnTexts = [];
-      if (row.role === 'ASSISTANT') {
-        const calls = Array.isArray(content.toolCalls) ? content.toolCalls : [];
-        for (const call of calls as Array<{ name: string; argsJson: string }>) {
-          toolCalls.push({ name: call.name, args: safeParse(call.argsJson) });
-        }
-        const text = typeof content.text === 'string' ? content.text : '';
-        if (text) lastTurnTexts.push(text);
-        for (const match of text.matchAll(MARKER)) cited.push(match[1] ?? '');
-      } else if (row.role === 'TOOL') {
-        collectDishRefs(content.result, seen);
-      }
-    }
-
-    const cart = await carts.getCart(sessionId);
-    const dishRestaurants = new Map(
-      (
-        await prisma.dish.findMany({
-          where: { id: { in: [...new Set(cartDishIdsPerTurn.flat())] } },
-          select: { id: true, restaurantId: true },
-        })
-      ).map((d) => [d.id, d.restaurantId]),
-    );
-    const observation: Observation = {
-      toolCalls,
-      cardIdsPerReply,
-      dishes: catalog,
-      cartItems: cart.items.map((item) => ({ dishName: item.name, quantity: item.quantity })),
-      cartRestaurantIdsPerTurn: cartDishIdsPerTurn.map((ids) =>
-        ids.map((id) => dishRestaurants.get(id) ?? `unknown:${id}`),
-      ),
-      finalReplyText: lastTurnTexts.join('\n'),
-      hallucinatedIds: [...new Set(cited.filter((id) => !seen.has(id)))],
-      runErrors,
-    };
-    finalReplyText = observation.finalReplyText;
-    const outcome = evaluateCase(evalCase, observation);
-    const callsAfter = gate.calls;
-    return {
-      id: label,
-      category: evalCase.category,
-      passed: outcome.passed,
-      infra: isInfrastructureFailure(failure),
-      checks: outcome.checks,
-      inputTokens,
-      outputTokens,
-      latenciesMs,
-      chatCalls: callsAfter.chat - callsBefore.chat,
-      embedCalls: callsAfter.embed - callsBefore.embed,
-      retries: eventLog.count - retriesBefore,
-      retryWaitMs: eventLog.waitMs - retryWaitBefore,
-      timeouts: eventLog.timeouts - timeoutsBefore,
-      fallbacks: eventLog.fallbacks - fallbacksBefore,
-      finalReplyText,
-    };
-  } finally {
-    await prisma.conversation.deleteMany({ where: { sessionId } });
-    await prisma.cart.deleteMany({ where: { sessionId } });
-  }
-}
-
-function safeParse(json: string): unknown {
-  try {
-    return JSON.parse(json) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
 async function main(): Promise<void> {
   const allCases = loadCases();
   const selection = selectCases(allCases, process.env.EVAL_ONLY, process.env.EVAL_REPEAT);
@@ -285,7 +120,7 @@ async function main(): Promise<void> {
   const gate = new RateGate(delayMs);
   // `withRetry` logs each 429/503 retry through the Nest Logger; observe it, do not change it.
   const eventLog = new LlmEventCountingLogger();
-  Logger.overrideLogger(eventLog);
+  const trace = new ToolTrace();
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(LLM_PROVIDER)
     .useFactory({
@@ -299,10 +134,19 @@ async function main(): Promise<void> {
       factory: (config: ConfigService) =>
         new PacedEmbeddingProvider(createEmbeddingProvider(config.all()), gate),
     })
+    .overrideProvider(ToolRegistry)
+    .useFactory({
+      inject: [SearchService, CartService],
+      factory: (search: SearchService, cart: CartService) =>
+        new TracingToolRegistry(search, cart, trace),
+    })
+    // `compile()` installs Nest's silent TestingLogger over any `overrideLogger` made before it,
+    // which swallowed every warning; `setLogger` is what keeps the observer in place.
+    .setLogger(eventLog)
     .compile();
   await moduleRef.init();
   try {
-    const services: Services = {
+    const services: Services & { prisma: PrismaService } = {
       agent: moduleRef.get(AgentService),
       conversations: moduleRef.get(ConversationRepository),
       carts: moduleRef.get(CartService),
@@ -333,7 +177,7 @@ async function main(): Promise<void> {
     const results: CaseResult[] = [];
     for (const [index, { evalCase, label }] of selection.cases.entries()) {
       process.stdout.write(`[${index + 1}/${selection.cases.length}] ${label} ... `);
-      const result = await runCase(evalCase, services, catalog, gate, label, eventLog);
+      const result = await runCase(evalCase, services, catalog, gate, label, eventLog, trace);
       results.push(result);
       console.log(
         result.infra ? 'INFRA (provedor sobrecarregado)' : result.passed ? 'ok' : 'FALHOU',
