@@ -58,17 +58,23 @@ Arquivos de configuração já prontos no repositório:
    - **Config as Code -> Config file path**: `/apps/api/railway.json`.
 3. Em **Variables**, crie (valores de exemplo; `CORS_ORIGIN` provisório até o passo 4):
 
-   | Variável                  | Valor                                                                             |
-   | ------------------------- | --------------------------------------------------------------------------------- |
-   | `DATABASE_URL`            | a connection string do Neon (com `sslmode=require`)                               |
-   | `LLM_PROVIDER`            | `openai` (ou `fake` para modo demonstração)                                       |
-   | `OPENAI_API_KEY`          | sua chave (marque como secret)                                                    |
-   | `LLM_CHAT_MODEL`          | modelo pequeno com tool calling (confirme o nome atual na documentação da OpenAI) |
-   | `LLM_EMBEDDING_MODEL`     | `text-embedding-3-small`                                                          |
-   | `EMBEDDING_DIMENSIONS`    | `1536`                                                                            |
-   | `CORS_ORIGIN`             | `http://localhost:3000` por enquanto                                              |
-   | `MAX_DAILY_CHAT_REQUESTS` | `500`                                                                             |
-   | `DB_BOOTSTRAP_ON_START`   | `false` (o banco já foi preparado no passo 1.4)                                   |
+   | Variável                  | Valor                                                                                            |
+   | ------------------------- | ------------------------------------------------------------------------------------------------ |
+   | `DATABASE_URL`            | a connection string do Neon (com `sslmode=require`)                                              |
+   | `LLM_PROVIDER`            | `openai` (ou `fake` para modo demonstração)                                                      |
+   | `OPENAI_API_KEY`          | sua chave (marque como secret)                                                                   |
+   | `OPENAI_BASE_URL`         | opcional; vazio usa a OpenAI. Gemini: `https://generativelanguage.googleapis.com/v1beta/openai/` |
+   | `LLM_CHAT_MODEL`          | modelo pequeno com tool calling (confirme o nome atual na documentação da OpenAI)                |
+   | `LLM_EMBEDDING_MODEL`     | `text-embedding-3-small`                                                                         |
+   | `EMBEDDING_DIMENSIONS`    | `1536`                                                                                           |
+   | `CORS_ORIGIN`             | `http://localhost:3000` por enquanto                                                             |
+   | `MAX_DAILY_CHAT_REQUESTS` | `500`                                                                                            |
+   | `DB_BOOTSTRAP_ON_START`   | `false` (o banco já foi preparado no passo 1.4)                                                  |
+
+   Para usar o Gemini gratuito, ponha a chave do Gemini em `OPENAI_API_KEY`, defina `OPENAI_BASE_URL`, `LLM_CHAT_MODEL=gemini-2.5-flash`,
+   `LLM_EMBEDDING_MODEL=gemini-embedding-001` e mantenha `EMBEDDING_DIMENSIONS=1536`. Rode o passo 1.4 (`pnpm db:setup`) com as mesmas
+   variáveis exportadas, ou `pnpm db:embed` de novo se o banco já tinha embeddings de outro modelo. No workflow `eval.yml`, crie o secret
+   `OPENAI_BASE_URL` (opcional) e as variáveis `LLM_CHAT_MODEL`, `LLM_EMBEDDING_MODEL` e `EVAL_PRICE_*` (0 para o Gemini gratuito).
 
    Não defina `PORT`: o Railway injeta a porta e a API a respeita.
 

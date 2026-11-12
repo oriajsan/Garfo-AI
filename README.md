@@ -59,6 +59,7 @@ Cada decisão importante tem um ADR curto (contexto, decisão, alternativas e co
 - [ADR 003: loop de agente próprio, sem framework](docs/adr/003-loop-de-agente-proprio-sem-framework.md): um `for` limitado a 6 iterações mostra que o mecanismo é entendido.
 - [ADR 004: SSE sobre POST, consumido com fetch](docs/adr/004-sse-via-post-com-fetch.md): `EventSource` não aceita POST, então o streaming usa `fetch` + `ReadableStream`.
 - [ADR 005: checkout fora das tools](docs/adr/005-checkout-fora-das-tools.md): ações irreversíveis ficam com o usuário, não com um modelo probabilístico.
+- [ADR 006: provedor compatível com OpenAI via `OPENAI_BASE_URL`](docs/adr/006-provedor-compativel-com-openai-via-base-url.md): o mesmo SDK atende OpenAI e Gemini, com schemas portáveis e validação de dimensões.
 
 Outras decisões de detalhe estão em [`docs/decisions-log.md`](docs/decisions-log.md).
 
@@ -90,7 +91,7 @@ docker compose up --build
 
 Abra <http://localhost:3000>. Sem `OPENAI_API_KEY`, a API usa o **modo demonstração** (respostas heurísticas, com aviso na interface): dá para buscar com filtros, ver os cards, adicionar ao carrinho e finalizar. A documentação da API fica em <http://localhost:3001/docs>.
 
-### Com a chave da OpenAI
+### Com a chave da OpenAI (opção A)
 
 ```bash
 cp .env.example .env
@@ -108,10 +109,30 @@ pnpm dev:api         # http://localhost:3001
 pnpm dev:web         # http://localhost:3000
 ```
 
+### Com o Gemini gratuito (opção B)
+
+A API usa o SDK da OpenAI e aceita qualquer endpoint compatível. Com uma chave gratuita do [Google AI Studio](https://aistudio.google.com/apikey), sem custo:
+
+```bash
+cp .env.example .env
+# no .env:
+# LLM_PROVIDER=openai
+# OPENAI_API_KEY=<chave do Gemini>
+# OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+# LLM_CHAT_MODEL=gemini-2.5-flash
+# LLM_EMBEDDING_MODEL=gemini-embedding-001
+# EMBEDDING_DIMENSIONS=1536
+# EVAL_PRICE_INPUT_USD_PER_MTOK=0
+# EVAL_PRICE_OUTPUT_USD_PER_MTOK=0
+docker compose up --build
+```
+
+Trocar o modelo de embedding exige rodar `pnpm db:embed` de novo (o hash do prato inclui o modelo, então os vetores antigos são recalculados). O tier gratuito tem limite de requisições por minuto e por dia, que pode afetar o `pnpm eval`. Detalhes no [ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md).
+
 ### Avaliação com o LLM real
 
 ```bash
-# .env com LLM_PROVIDER=openai, OPENAI_API_KEY e LLM_CHAT_MODEL
+# .env com LLM_PROVIDER=openai, OPENAI_API_KEY e LLM_CHAT_MODEL (e OPENAI_BASE_URL, se usar o Gemini)
 pnpm db:embed        # embeddings reais (se o banco foi preparado com o provedor fake)
 pnpm eval            # TEM CUSTO: chama a API da OpenAI
 ```
