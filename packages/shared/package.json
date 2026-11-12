@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Schemas Zod, enums de domínio e tipos compartilhados entre API e web",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

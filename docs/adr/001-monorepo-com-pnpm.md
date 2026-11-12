@@ -24,7 +24,7 @@ apps/web         -> @garfo/web
 packages/shared  -> @garfo/shared (dependência "workspace:*" dos dois apps)
 ```
 
-- A versão do pnpm fica fixada em `packageManager` no `package.json` raiz (`pnpm@9.15.9`), e a do Node em `.nvmrc` (20.19). O piso 20.19 existe porque o `@scalar/nestjs-api-reference@1.0.31` depende de pacotes ESM e só funciona com `require` de ESM, disponível sem flag a partir do Node 20.19.
+- A versão do pnpm fica fixada em `packageManager` no `package.json` raiz (`pnpm@9.15.9`), e a do Node em `.nvmrc` (24; veja a nota de 2026-11 ao final). O piso 20.19 (histórico) existia porque o `@scalar/nestjs-api-reference@1.0.31` depende de pacotes ESM e só funciona com `require` de ESM, disponível sem flag a partir do Node 20.19.
 - TypeScript `strict` vem de um `tsconfig.base.json` único, que cada pacote estende.
 - ESLint e Prettier são configurados uma vez na raiz (`.eslintrc.cjs`, `.prettierrc.json`); cada pacote só acrescenta o que é dele (regras com checagem de tipos na API e no shared, `next/core-web-vitals` no web).
 - Os scripts da raiz (`pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`) usam `pnpm -r`, que roda em todos os pacotes **em ordem topológica**: o `shared` é compilado antes de quem depende dele.
@@ -120,3 +120,9 @@ Nenhuma dependência nova de fora do repositório. O workspace `evals/` virou um
 | `ts-node`                               | evals (dev)                | Executa `run-evals.ts`. O `tsx` não serve aqui: ele usa esbuild, que **não emite `emitDecoratorMetadata`**, e sem esses metadados a injeção de dependência do Nest não funciona. O `ts-node` compila com o `tsc` e preserva os decoradores. |
 
 Um pacote próprio (em vez de um script solto em `evals/`) existe por causa do pnpm estrito: um arquivo na raiz só enxerga as dependências da raiz. O `pnpm eval` da raiz repassa o `.env` pelo `scripts/with-env.mjs` e chama o script do pacote.
+
+## Nota (2026-11): migração para o Node 24
+
+O projeto agora roda no **Node 24**: `engines.node` em `>=24 <25` em todos os `package.json`, `.nvmrc` em `24` e imagens `node:24-alpine`. O motivo foi a Vercel, que encerrou o suporte ao Node 20 (fora de suporte desde abril de 2026) e recusava o deploy com o piso `>=20.19 <21`.
+
+Os pinos de `openai@^4` e do `@scalar/nestjs-api-reference@1.0.31` foram **mantidos de propósito**: esta migração não muda a versão major de nenhuma dependência. O Node 24 já atende ao requisito de Node 22 das versões novas, então liberá-los é possível, mas fica como pendência para uma tarefa própria. O texto acima sobre o Node 20 descreve o contexto da época.

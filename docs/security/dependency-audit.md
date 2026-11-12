@@ -48,7 +48,7 @@ Notas:
 
 ### Exposição dos 25 advisories do `next`
 
-Perfil do app (verificado no código): App Router, sem middleware, sem `rewrites`, sem i18n, sem Server Actions (`"use server"` ausente), sem `next/image` e sem `next/script`, sem CSP com nonce, `public/` vazio, `output: 'standalone'` rodando `node apps/web/server.js` (servidor padrão, não customizado) em Linux, na imagem Docker `node:20.19-alpine` (libc **musl**, não glibc), com `vercel.json` para deploy na Vercel, que roda em Linux com glibc. O endpoint `/_next/image` existe por padrão, mesmo sem `next/image` no código. O navegador chama a API Nest diretamente (`NEXT_PUBLIC_API_URL`); o Next só serve páginas estáticas pré-renderizadas.
+Perfil do app (verificado no código): App Router, sem middleware, sem `rewrites`, sem i18n, sem Server Actions (`"use server"` ausente), sem `next/image` e sem `next/script`, sem CSP com nonce, `public/` vazio, `output: 'standalone'` rodando `node apps/web/server.js` (servidor padrão, não customizado) em Linux, na imagem Docker `node:24-alpine` (desde 2026-11; antes `node:20.19-alpine`; nas duas a libc é **musl**, não glibc), com `vercel.json` para deploy na Vercel, que roda em Linux com glibc. O endpoint `/_next/image` existe por padrão, mesmo sem `next/image` no código. O navegador chama a API Nest diretamente (`NEXT_PUBLIC_API_URL`); o Next só serve páginas estáticas pré-renderizadas.
 
 Classificação (depois da P-SEC-1): Aplicável (5), Mitigado por `images.unoptimized` (5), Provavelmente não aplicável (6), Não aplicável (9). Total: 25, a mesma contagem do `pnpm audit`.
 

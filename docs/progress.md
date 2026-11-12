@@ -18,7 +18,7 @@
 
 ### Feito
 
-- **Monorepo pnpm** (`apps/api`, `apps/web`, `packages/shared`) com pnpm 9.15.9 fixado em `packageManager` e Node 20 em `.nvmrc`. Veja o [ADR 001](adr/001-monorepo-com-pnpm.md).
+- **Monorepo pnpm** (`apps/api`, `apps/web`, `packages/shared`) com pnpm 9.15.9 fixado em `packageManager` e Node 24 em `.nvmrc`. Veja o [ADR 001](adr/001-monorepo-com-pnpm.md).
 - **TypeScript strict** em todo o repositório via `tsconfig.base.json` (com `noUncheckedIndexedAccess`). ESLint (`no-explicit-any` como erro; `recommended-type-checked` na API e no shared; `next/core-web-vitals` no web) e Prettier compartilhados na raiz.
 - **`packages/shared`:** enums do catálogo (`DISH_CATEGORIES`, `DIETARY_TAGS`, `ALLERGENS`) como schemas Zod, rótulos em pt-BR e schema da resposta de health.
 - **API NestJS 10** com prefixo `/api/v1`:
@@ -40,7 +40,7 @@
   Há um prato indisponível de propósito (Kombucha de hibisco, Raiz Verde), para testar `DISH_UNAVAILABLE` no bloco 2. Todos os alergênicos da lista aparecem pelo menos uma vez.
 
 - **Next.js 14** (App Router) com Tailwind 3, paleta laranja própria (`brand-*`) e modo escuro por `prefers-color-scheme`. Só uma página provisória, sem telas.
-- **Docker:** `docker-compose.yml` com `db` (pgvector/pgvector:pg16, volume nomeado, healthcheck `pg_isready`) e `api` (Dockerfile multi-stage, `node:20-alpine`, usuário `node`, `NODE_ENV=production`, roda `prisma migrate deploy` ao iniciar, healthcheck no `/api/v1/health`). `.dockerignore` na raiz.
+- **Docker:** `docker-compose.yml` com `db` (pgvector/pgvector:pg16, volume nomeado, healthcheck `pg_isready`) e `api` (Dockerfile multi-stage, `node:24-alpine`, usuário `node`, `NODE_ENV=production`, roda `prisma migrate deploy` ao iniciar, healthcheck no `/api/v1/health`). `.dockerignore` na raiz.
 - **`.env.example`** com todas as variáveis da seção 9, sem valores reais.
 - **CI** (`.github/workflows/ci.yml`): install → lint → typecheck → migrate → seed → build, com serviço Postgres pgvector e `LLM_PROVIDER=fake`. Um segundo job roda o `gitleaks` no histórico completo.
 - **ADRs** 001 (monorepo com pnpm, incluindo as dependências de desenvolvimento fora da seção 3) e 002 (pgvector).
@@ -66,7 +66,7 @@
 
 ### Como testar manualmente
 
-Pré-requisitos: Node 20, pnpm 9 (`corepack enable`) e Docker.
+Pré-requisitos: Node 24, pnpm 9 (`corepack enable`) e Docker.
 
 ```bash
 pnpm install                 # também compila o shared e gera o Prisma Client
