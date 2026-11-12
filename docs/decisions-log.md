@@ -65,3 +65,11 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D3.18 · JSON Schema das tools em draft 7** (`target: 'jsonSchema7'`), com teste que barra `$ref`, `$schema` e `exclusiveMinimum` booleano. O alvo `openApi3` gerava a forma booleana do draft 4, que a OpenAI pode rejeitar.
 - **D3.19 · "barato/barata/em conta" no modo demo = até R$ 25**, para o chip "Uma sobremesa barata" funcionar sem chave.
 - **D3.20 · Limitações aceitas do modo demo:** não recusa assuntos fora de comida (isso é papel do LLM real, regra 8 do prompt); o timeout de tool não cancela o handler; o teto diário não conta rodadas abortadas. Registradas para a revisão final.
+
+## Bloco 4 (decisões do implementer, aceitas pelo líder)
+
+- **D4.5 · Seed e embed compilados para JS** (`tsconfig.bootstrap.json` → `dist-bootstrap/`) e executados por `apps/api/docker-entrypoint.sh` quando `DB_BOOTSTRAP_ON_START=true`: a imagem de produção não precisa de `tsx`. O caminho do JSON vem de `SEED_PATH`.
+- **D4.6 · Atividade das tools dentro da bolha do assistente** (spinner vira check); não é reidratada ao recarregar.
+- **D4.7 · Ícone do GitHub em SVG inline**, porque o `lucide-react` v1 não traz ícones de marca; só aparece se `NEXT_PUBLIC_GITHUB_URL` estiver definido.
+- **D4.8 · "Finalizar pedido" desabilitado abaixo do mínimo**, com o valor que falta visível; o `BELOW_MIN_ORDER` da API continua tratado.
+- **D4.9 · O build do web baixa a fonte Inter** (`next/font/google`): precisa de rede no build (Vercel e Docker têm).
