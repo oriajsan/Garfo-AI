@@ -37,6 +37,9 @@ jobs:
       # Model names come from repository variables (Settings > Variables), not from code.
       LLM_CHAT_MODEL: ${{ vars.LLM_CHAT_MODEL }}
       LLM_EMBEDDING_MODEL: ${{ vars.LLM_EMBEDDING_MODEL || 'text-embedding-3-small' }}
+      # Optional (empty = defaults): see ADR 006.
+      LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
+      LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
       EMBEDDING_DIMENSIONS: '1536'
       CORS_ORIGIN: http://localhost:3000
       EVAL_PRICE_INPUT_USD_PER_MTOK: ${{ vars.EVAL_PRICE_INPUT_USD_PER_MTOK }}

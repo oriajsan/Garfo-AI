@@ -121,13 +121,15 @@ cp .env.example .env
 # OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 # LLM_CHAT_MODEL=gemini-3.5-flash-lite   # recomendado (~1,5 s por chamada); gemini-3.5-flash é a alternativa, mais lenta (~9 s)
 # LLM_EMBEDDING_MODEL=gemini-embedding-001
+# LLM_REASONING_EFFORT=minimal             # none | minimal | low | medium | high (padrão minimal)
+# LLM_FALLBACK_MODEL=gemini-3.1-flash-lite # opcional: usado uma vez se o modelo principal não responder em 15 s
 # EMBEDDING_DIMENSIONS=1536
 # EVAL_PRICE_INPUT_USD_PER_MTOK=0
 # EVAL_PRICE_OUTPUT_USD_PER_MTOK=0
 docker compose up --build
 ```
 
-Trocar o modelo de embedding exige rodar `pnpm db:embed` de novo (o hash do prato inclui o modelo, então os vetores antigos são recalculados). O tier gratuito tem limite de requisições por minuto e por dia, que pode afetar o `pnpm eval`. O `gemini-2.5-flash` não está disponível para contas novas. Erros 429/503 do provedor são refeitos até 3 vezes (esperas de 1 s, 2 s e 4 s); se persistirem, a interface mostra "O serviço de IA está sobrecarregado". Detalhes no [ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md).
+Trocar o modelo de embedding exige rodar `pnpm db:embed` de novo (o hash do prato inclui o modelo, então os vetores antigos são recalculados). O tier gratuito tem limite de requisições por minuto e por dia, que pode afetar o `pnpm eval`. O `gemini-2.5-flash` não está disponível para contas novas. Erros 429/503 do provedor são refeitos até 3 vezes (esperas de 1 s, 2 s e 4 s); se persistirem, a interface mostra "O serviço de IA está sobrecarregado". Com `OPENAI_BASE_URL`, o chat envia também `reasoning_effort` (`LLM_REASONING_EFFORT`, padrão `minimal`, para reduzir o tempo de "thinking"); com a OpenAI ele nunca é enviado. Se o provedor rejeitar o valor, basta trocar a variável, e o `pnpm llm:smoke` mostra o erro. Cada chamada de chat espera até `LLM_CALL_TIMEOUT_MS` (padrão 15000) pelo primeiro trecho da resposta; se estourar, a chamada é repetida uma vez com `LLM_FALLBACK_MODEL` (opcional, sugestão `gemini-3.1-flash-lite`) e, se isso também falhar ou não houver fallback, a interface mostra "O serviço de IA demorou demais para responder". Depois de 8 s sem nenhum evento, a interface avisa que o assistente está mais lento que o normal. Detalhes no [ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md).
 
 #### Diagnóstico do provedor
 
@@ -135,7 +137,7 @@ Trocar o modelo de embedding exige rodar `pnpm db:embed` de novo (o hash do prat
 pnpm llm:smoke       # TEM CUSTO MÍNIMO: 2 chamadas de chat e 1 de embedding
 ```
 
-Com o `.env` configurado (`LLM_PROVIDER=openai`), roda um ciclo completo sem stream (pergunta, tool call `search_dishes`, resultado fixo, resposta final) e um embedding, imprimindo cada requisição e resposta em JSON com a chave mascarada. Termina com código diferente de zero, mostrando status HTTP e corpo, se o provedor recusar algo. Use-o antes de `db:embed` e `eval` para validar um modelo novo. Os erros do provedor também aparecem nos logs da API (`llm_http_error`, `chat_error`) com status e corpo.
+Com o `.env` configurado (`LLM_PROVIDER=openai`), roda um ciclo completo sem stream (pergunta, tool call `search_dishes`, resultado fixo, resposta final) e um embedding (com `LLM_FALLBACK_MODEL`, também reenvia o histórico ao modelo de fallback para verificar se ele aceita as thought signatures do principal), imprimindo cada requisição e resposta em JSON com a chave mascarada. Termina com código diferente de zero, mostrando status HTTP e corpo, se o provedor recusar algo. Use-o antes de `db:embed` e `eval` para validar um modelo novo. Os erros do provedor também aparecem nos logs da API (`llm_http_error`, `chat_error`) com status e corpo.
 
 ### Avaliação com o LLM real
 
