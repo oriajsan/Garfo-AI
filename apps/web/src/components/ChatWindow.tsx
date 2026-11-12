@@ -82,7 +82,7 @@ export function ChatWindow() {
         role="log"
         aria-live="polite"
         aria-label="Conversa com o Garfo"
-        className="flex-1 overflow-y-auto overscroll-contain px-3 py-5 sm:px-6"
+        className="flex-1 overflow-y-auto overscroll-contain px-3 pb-24 pt-5 sm:px-6 lg:pb-5"
       >
         <div
           className={clsx(
