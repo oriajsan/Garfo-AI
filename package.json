@@ -1,0 +1,35 @@
+{
+  "name": "garfo-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Assistente de pedidos com IA: agente com tool calling, busca semântica com pgvector, NestJS e Next.js",
+  "license": "MIT",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.11 <21",
+    "pnpm": ">=9 <10"
+  },
+  "scripts": {
+    "dev:api": "node scripts/with-env.mjs pnpm --filter @garfo/api dev",
+    "dev:web": "node scripts/with-env.mjs pnpm --filter @garfo/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint && prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm -r --if-present test:e2e",
+    "format": "prettier --write .",
+    "db:migrate": "node scripts/with-env.mjs pnpm --filter @garfo/api db:migrate",
+    "db:migrate:dev": "node scripts/with-env.mjs pnpm --filter @garfo/api db:migrate:dev",
+    "db:seed": "node scripts/with-env.mjs pnpm --filter @garfo/api db:seed",
+    "db:setup": "pnpm db:migrate && pnpm db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "eslint": "8.57.1",
+    "eslint-config-prettier": "^9",
+    "prettier": "^3",
+    "typescript": "^5.6"
+  }
+}
