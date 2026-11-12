@@ -10,12 +10,18 @@ export interface FakeToolCall {
 export interface FakeTurn {
   text?: string;
   toolCalls?: FakeToolCall[];
+  /**
+   * `finish_reason` of the stream. By default `tool_calls` when there are tool calls, `stop`
+   * otherwise; `null` simulates a stream cut short.
+   */
+  finishReason?: string | null;
 }
 
 export const DEMO_MODE_TEXT =
   'Estou em modo demonstração, sem um modelo de IA conectado. Configure OPENAI_API_KEY para conversar de verdade.';
 
 const TEXT_CHUNK_SIZE = 12;
+export const FAKE_MODEL = 'fake';
 
 /** Decides the next turn when there is no script left (the key-less demo, see demo-policy.ts). */
 export type FakeFallback = (input: LlmChatInput) => FakeTurn;
@@ -57,8 +63,16 @@ export class FakeLlmProvider implements LlmProvider {
       };
     }
 
+    const finishReason =
+      turn.finishReason !== undefined
+        ? turn.finishReason
+        : (turn.toolCalls?.length ?? 0) > 0
+          ? 'tool_calls'
+          : 'stop';
     yield {
       type: 'done',
+      finishReason,
+      model: FAKE_MODEL,
       usage: {
         inputTokens: Math.ceil(input.messages.length + input.system.length / 4),
         outputTokens: Math.ceil(outputChars / 4),
