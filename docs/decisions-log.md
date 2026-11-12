@@ -81,3 +81,12 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D5.1 · Eval com o provedor fake grava em `evals/results/fake-latest.md`**, para validar o harness sem chave sem falsificar o resultado oficial (`latest.md` só nasce com o LLM real).
 - **D5.2 · Diagrama da `/como-funciona` sem dependência de mermaid** (SVG/HTML próprio); o README usa o mermaid da SPEC, que o GitHub renderiza.
 - **D5.3 · `docs/architecture.png` da estrutura da SPEC não será gerado:** o mermaid do README e o diagrama da página cumprem o papel sem um binário a mais para manter.
+
+## Bloco 5 (decisões do implementer, aceitas pelo líder)
+
+- **D5.4 · `evals/` é um workspace (`@garfo/evals`)** executado com `ts-node`, porque o esbuild (`tsx`) não emite `emitDecoratorMetadata` e a injeção de dependência do Nest quebra sem isso.
+- **D5.5 · Extensões do schema dos casos:** `minRecommendations` (sem ele, `recommendedDishesSatisfy` passaria com zero cards), `anyOf` em `toolArgs` (ex.: `gluten_free` como tag **ou** `gluten` excluído), `cartAfter` por nome de prato.
+- **D5.6 · Argumentos das tools lidos das mensagens persistidas** (`toolCalls[].argsJson`), sem tocar no código de produção.
+- **D5.7 · `fake-latest.md` no `.gitignore`:** é saída local de validação do harness, não resultado.
+- **D5.8 · `pnpm eval` sai com 0 mesmo com taxa baixa**; só erro do harness dá código 1.
+- **D5.9 · Eval com o fake: 12/20 (60%).** As 8 falhas são limitações conhecidas da política demo (não atualiza nem limpa carrinho, não recusa fora do escopo, sempre recomenda), não do harness. Esse número **não** é publicado.
