@@ -25,13 +25,21 @@ import {
   DEFAULT_PRICE_INPUT_USD_PER_MTOK,
   DEFAULT_PRICE_OUTPUT_USD_PER_MTOK,
   FAKE_WARNING,
+  PARTIAL_WARNING,
   renderMarkdown,
   renderTerminalTable,
   summarize,
   type CaseResult,
   type RunInfo,
 } from './report';
-import { PacedEmbeddingProvider, PacedLlmProvider, parseEvalDelayMs, RateGate } from './rate-gate';
+import {
+  discountWait,
+  PacedEmbeddingProvider,
+  PacedLlmProvider,
+  parseEvalDelayMs,
+  RateGate,
+} from './rate-gate';
+import { selectCases } from './select';
 import { evalCasesFileSchema, type EvalCase } from './schema';
 
 /**
@@ -70,6 +78,9 @@ function describeRun(): RunInfo {
 }
 
 function printBanner(info: RunInfo, caseCount: number, delayMs: number): void {
+  if (info.partial) {
+    console.log(`ATENÇÃO: ${PARTIAL_WARNING}\n`);
+  }
   console.log('Garfo AI: avaliação do agente');
   console.log(`  Provedor: ${info.provider}`);
   console.log(`  Modelo:   ${info.model}`);
@@ -120,6 +131,8 @@ async function runCase(
   evalCase: EvalCase,
   services: Services,
   catalog: ReadonlyMap<string, DishFacts>,
+  gate: RateGate,
+  label: string,
 ): Promise<CaseResult> {
   const { agent, conversations, carts, prisma } = services;
   const sessionId = randomUUID();
@@ -128,6 +141,8 @@ async function runCase(
   const cardIdsPerReply: string[][] = [];
   const cartDishIdsPerTurn: string[][] = [];
   const latenciesMs: number[] = [];
+  const callsBefore = gate.calls;
+  let finalReplyText = '';
   let inputTokens = 0;
   let outputTokens = 0;
 
@@ -138,6 +153,7 @@ async function runCase(
       const abort = new AbortController();
       const timer = setTimeout(() => abort.abort(), TURN_TIMEOUT_MS);
       let done = false;
+      const waitedBefore = gate.waitedMs;
       try {
         await agent.run(
           { sessionId, conversationId, message },
@@ -150,7 +166,8 @@ async function runCase(
               done = true;
               inputTokens += event.data.usage.inputTokens;
               outputTokens += event.data.usage.outputTokens;
-              latenciesMs.push(event.data.latencyMs);
+              // The gate's pacing sleeps happen inside the turn: not agent latency.
+              latenciesMs.push(discountWait(event.data.latencyMs, gate.waitedMs - waitedBefore));
             }
           },
           abort.signal,
@@ -215,9 +232,11 @@ async function runCase(
       hallucinatedIds: [...new Set(cited.filter((id) => !seen.has(id)))],
       runErrors,
     };
+    finalReplyText = observation.finalReplyText;
     const outcome = evaluateCase(evalCase, observation);
+    const callsAfter = gate.calls;
     return {
-      id: evalCase.id,
+      id: label,
       category: evalCase.category,
       passed: outcome.passed,
       infra: isInfrastructureFailure(failure),
@@ -225,6 +244,9 @@ async function runCase(
       inputTokens,
       outputTokens,
       latenciesMs,
+      chatCalls: callsAfter.chat - callsBefore.chat,
+      embedCalls: callsAfter.embed - callsBefore.embed,
+      finalReplyText,
     };
   } finally {
     await prisma.conversation.deleteMany({ where: { sessionId } });
@@ -241,10 +263,11 @@ function safeParse(json: string): unknown {
 }
 
 async function main(): Promise<void> {
-  const cases = loadCases();
-  const info = describeRun();
+  const allCases = loadCases();
+  const selection = selectCases(allCases, process.env.EVAL_ONLY, process.env.EVAL_REPEAT);
+  const info = { ...describeRun(), partial: selection.partial };
   const delayMs = parseEvalDelayMs(process.env.EVAL_DELAY_MS, info.provider);
-  printBanner(info, cases.length, delayMs);
+  printBanner(info, selection.cases.length, delayMs);
 
   // One gate shared by chat and embeddings, wrapping the production providers (their 429/503
   // retry stays underneath). Only the eval is paced; the API code is untouched.
@@ -291,12 +314,12 @@ async function main(): Promise<void> {
     );
     if (catalog.size === 0) throw new Error('The catalog is empty: run `pnpm db:setup` first.');
     // Statistics consider only dishes a customer could actually order.
-    printCatalogStats(cases, [...catalog.values()]);
+    printCatalogStats([...new Set(selection.cases.map((c) => c.evalCase))], [...catalog.values()]);
 
     const results: CaseResult[] = [];
-    for (const [index, evalCase] of cases.entries()) {
-      process.stdout.write(`[${index + 1}/${cases.length}] ${evalCase.id} ... `);
-      const result = await runCase(evalCase, services, catalog);
+    for (const [index, { evalCase, label }] of selection.cases.entries()) {
+      process.stdout.write(`[${index + 1}/${selection.cases.length}] ${label} ... `);
+      const result = await runCase(evalCase, services, catalog, gate, label);
       results.push(result);
       console.log(
         result.infra ? 'INFRA (provedor sobrecarregado)' : result.passed ? 'ok' : 'FALHOU',
@@ -336,11 +359,18 @@ async function main(): Promise<void> {
         : `Custo estimado: US$ ${summary.totalCostUsd.toFixed(4)}`,
     );
     console.log(
-      `Latência por resposta: p50 ${Math.round(summary.latencyP50Ms)} ms, p95 ${Math.round(summary.latencyP95Ms)} ms`,
+      `Chamadas ao LLM por caso (média): ${summary.avgChatCalls.toFixed(1)} de chat, ${summary.avgEmbedCalls.toFixed(1)} de embeddings`,
+    );
+    console.log(
+      `Latência por resposta (sem a pausa): p50 ${Math.round(summary.latencyP50Ms)} ms, p95 ${Math.round(summary.latencyP95Ms)} ms`,
     );
 
-    // The fake provider never touches latest.md (D5.1): that file only exists with the real LLM.
-    const fileName = info.provider === 'fake' ? 'fake-latest.md' : 'latest.md';
+    // Neither the fake provider (D5.1) nor a filtered run ever touches latest.md.
+    const fileName = info.partial
+      ? 'partial-latest.md'
+      : info.provider === 'fake'
+        ? 'fake-latest.md'
+        : 'latest.md';
     const outDir = resolve(__dirname, 'results');
     mkdirSync(outDir, { recursive: true });
     writeFileSync(resolve(outDir, fileName), renderMarkdown(results, info), 'utf8');

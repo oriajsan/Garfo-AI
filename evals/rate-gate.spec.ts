@@ -1,4 +1,4 @@
-import { parseEvalDelayMs, RateGate, type RateGateClock } from './rate-gate';
+import { discountWait, parseEvalDelayMs, RateGate, type RateGateClock } from './rate-gate';
 
 function fakeClock(): RateGateClock & { time: number; sleeps: number[] } {
   const clock = {
@@ -52,6 +52,41 @@ describe('RateGate', () => {
     await gate.wait();
     await gate.wait();
     expect(clock.sleeps).toEqual([]);
+  });
+});
+
+describe('wait accounting', () => {
+  it('accumulates only the time actually slept, across several waits in one reply', async () => {
+    const clock = fakeClock();
+    const gate = new RateGate(2000, clock);
+    await gate.wait();
+    const before = gate.waitedMs;
+    clock.time += 500; // some real work
+    await gate.wait(); // sleeps 1500
+    await gate.wait(); // sleeps 2000
+    clock.time += 300;
+    await gate.wait(); // sleeps 1700
+    expect(gate.waitedMs - before).toBe(5200);
+    expect(gate.waitedMs).toBe(5200);
+  });
+
+  it('counts calls per kind', async () => {
+    const gate = new RateGate(0, fakeClock());
+    await gate.wait('chat');
+    await gate.wait('chat');
+    await gate.wait('embed');
+    expect(gate.calls).toEqual({ chat: 2, embed: 1 });
+  });
+});
+
+describe('discountWait', () => {
+  it('subtracts the waited time from the latency', () => {
+    expect(discountWait(9000, 5200)).toBe(3800);
+    expect(discountWait(900, 0)).toBe(900);
+  });
+
+  it('never goes below zero', () => {
+    expect(discountWait(100, 500)).toBe(0);
   });
 });
 

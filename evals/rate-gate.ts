@@ -37,8 +37,22 @@ const realClock: RateGateClock = {
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 };
 
+export type CallKind = 'chat' | 'embed';
+
+/**
+ * `latencyMs` of a reply minus the time the gate made it wait (pacing is an eval artifact,
+ * not agent latency). Never negative.
+ */
+export function discountWait(latencyMs: number, waitedMs: number): number {
+  return Math.max(0, latencyMs - waitedMs);
+}
+
 export class RateGate {
   private lastStart: number | undefined;
+  /** Total time actually slept by the gate; snapshot it around a turn to get that turn's wait. */
+  private waited = 0;
+  private chat = 0;
+  private embed = 0;
   /** Serializes callers so concurrent ones still get spaced slots. */
   private queue: Promise<void> = Promise.resolve();
 
@@ -47,12 +61,27 @@ export class RateGate {
     private readonly clock: RateGateClock = realClock,
   ) {}
 
+  /** Cumulative milliseconds spent waiting for a slot. */
+  get waitedMs(): number {
+    return this.waited;
+  }
+
+  /** Cumulative provider calls seen by the gate, per kind. */
+  get calls(): { chat: number; embed: number } {
+    return { chat: this.chat, embed: this.embed };
+  }
+
   /** Resolves when the caller may start its provider call. */
-  wait(): Promise<void> {
+  wait(kind: CallKind = 'chat'): Promise<void> {
+    if (kind === 'chat') this.chat += 1;
+    else this.embed += 1;
     const slot = this.queue.then(async () => {
       if (this.lastStart !== undefined) {
         const remaining = this.lastStart + this.delayMs - this.clock.now();
-        if (remaining > 0) await this.clock.sleep(remaining);
+        if (remaining > 0) {
+          await this.clock.sleep(remaining);
+          this.waited += remaining;
+        }
       }
       this.lastStart = this.clock.now();
     });
@@ -68,7 +97,7 @@ export class PacedLlmProvider implements LlmProvider {
   ) {}
 
   async *chat(input: LlmChatInput): AsyncIterable<LlmStreamChunk> {
-    await this.gate.wait();
+    await this.gate.wait('chat');
     yield* this.inner.chat(input);
   }
 }
@@ -90,7 +119,7 @@ export class PacedEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(texts: string[]): Promise<number[][]> {
-    await this.gate.wait();
+    await this.gate.wait('embed');
     return this.inner.embed(texts);
   }
 }

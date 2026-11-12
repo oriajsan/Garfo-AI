@@ -1,6 +1,7 @@
 import {
   estimateCostUsd,
   percentile,
+  renderReplyBlock,
   renderMarkdown,
   renderTerminalTable,
   summarize,
@@ -24,6 +25,8 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
   inputTokens: 1000,
   outputTokens: 100,
   latenciesMs: [100],
+  chatCalls: 2,
+  embedCalls: 1,
   ...overrides,
 });
 
@@ -112,5 +115,60 @@ describe('infrastructure cases', () => {
 
   it('is silent about exclusions when nothing is infra', () => {
     expect(renderMarkdown([result({})], info)).not.toContain('sem os');
+  });
+});
+
+describe('LLM calls per case', () => {
+  const rs = [
+    result({ id: 'a', chatCalls: 3, embedCalls: 1 }),
+    result({ id: 'b', chatCalls: 1, embedCalls: 0 }),
+  ];
+
+  it('averages chat and embedding calls in the summary and the report', () => {
+    const s = summarize(rs, info);
+    expect(s.avgChatCalls).toBe(2);
+    expect(s.avgEmbedCalls).toBe(0.5);
+    const md = renderMarkdown(rs, info);
+    expect(md).toContain('2.0 de chat, 0.5 de embeddings');
+    expect(md).toMatch(/`a` \| .* \| passou \| 3 \| 1 \|/);
+  });
+
+  it('shows the counts in the terminal table', () => {
+    expect(renderTerminalTable(rs)).toContain('chat  emb');
+    expect(renderTerminalTable(rs).split('\n')[1]).toMatch(/ {3}3 {2} {2}1$/);
+  });
+});
+
+describe('final replies of failed cases', () => {
+  it('lists only failed cases, with the reply in a fence', () => {
+    const md = renderMarkdown(
+      [
+        result({ id: 'ok', finalReplyText: 'segredo-do-ok' }),
+        result({ id: 'bad', passed: false, finalReplyText: 'Olá | **mundo**' }),
+      ],
+      info,
+    );
+    expect(md).toContain('## Respostas dos casos que falharam');
+    expect(md).toContain('Olá | **mundo**');
+    expect(md).not.toContain('segredo-do-ok');
+  });
+
+  it('omits the section when nothing failed', () => {
+    expect(renderMarkdown([result({})], info)).not.toContain('Respostas dos casos');
+  });
+
+  it('truncates and uses a fence longer than any backtick run in the text', () => {
+    const block = renderReplyBlock('```js\n' + 'x'.repeat(900));
+    expect(block.startsWith('````\n')).toBe(true);
+    expect(block.endsWith('\n````')).toBe(true);
+    expect(block).toContain('[truncado]');
+    expect(block.length).toBeLessThan(900);
+  });
+});
+
+describe('partial runs', () => {
+  it('warns in the report banner', () => {
+    expect(renderMarkdown([result({})], { ...info, partial: true })).toContain('Execução PARCIAL');
+    expect(renderMarkdown([result({})], info)).not.toContain('Execução PARCIAL');
   });
 });
