@@ -1,0 +1,829 @@
+{
+  "restaurants": [
+    {
+      "slug": "sertao-arretado",
+      "name": "Sertão Arretado",
+      "cuisine": "Nordestina",
+      "description": "Comida caseira nordestina feita no capricho: baião, cuscuz, tapioca e moqueca.",
+      "emoji": "🌵",
+      "rating": 4.7,
+      "deliveryFeeCents": 699,
+      "deliveryMinMinutes": 40,
+      "deliveryMaxMinutes": 60,
+      "minOrderCents": 3000,
+      "dishes": [
+        {
+          "name": "Baião de dois com carne de sol",
+          "description": "Arroz, feijão-de-corda, queijo coalho, nata e carne de sol desfiada na manteiga de garrafa",
+          "priceCents": 6990,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "high_protein"],
+          "allergens": ["lactose"],
+          "calories": 1650,
+          "serves": 2
+        },
+        {
+          "name": "Escondidinho de macaxeira com carne de sol",
+          "description": "Purê cremoso de macaxeira gratinado com queijo coalho sobre carne de sol acebolada",
+          "priceCents": 4290,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "high_protein"],
+          "allergens": ["lactose"],
+          "calories": 780
+        },
+        {
+          "name": "Escondidinho vegetariano de macaxeira",
+          "description": "Purê de macaxeira com abóbora assada, cebola caramelizada e queijo coalho gratinado",
+          "priceCents": 3690,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["lactose"],
+          "calories": 640
+        },
+        {
+          "name": "Moqueca baiana de peixe",
+          "description": "Peixe branco no leite de coco e azeite de dendê com pimentões; acompanha arroz e pirão",
+          "priceCents": 11490,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "lactose_free", "high_protein"],
+          "allergens": ["fish"],
+          "calories": 1500,
+          "serves": 2
+        },
+        {
+          "name": "Galinhada caipira",
+          "description": "Arroz com frango caipira, açafrão-da-terra, pequi e cheiro-verde",
+          "priceCents": 3890,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "lactose_free", "high_protein"],
+          "allergens": [],
+          "calories": 720
+        },
+        {
+          "name": "Feijão-verde cremoso com abóbora",
+          "description": "Feijão-verde cozido com abóbora, cebola e coentro; acompanha arroz e farofa de dendê",
+          "priceCents": 3290,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 590
+        },
+        {
+          "name": "Cuscuz nordestino com ovo e queijo coalho",
+          "description": "Cuscuz de flocão de milho com ovo frito e queijo coalho na chapa",
+          "priceCents": 2290,
+          "category": "SNACK",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["egg", "lactose"],
+          "calories": 520
+        },
+        {
+          "name": "Tapioca de carne de sol com queijo",
+          "description": "Tapioca recheada com carne de sol desfiada e queijo coalho derretido",
+          "priceCents": 2590,
+          "category": "SNACK",
+          "dietaryTags": ["gluten_free", "high_protein"],
+          "allergens": ["lactose"],
+          "calories": 480
+        },
+        {
+          "name": "Caldinho de feijão",
+          "description": "Caldo de feijão encorpado com bacon crocante e cheiro-verde",
+          "priceCents": 1490,
+          "category": "STARTER",
+          "dietaryTags": ["gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 260
+        },
+        {
+          "name": "Macaxeira frita com manteiga de garrafa",
+          "description": "Porção de macaxeira frita sequinha regada com manteiga de garrafa",
+          "priceCents": 1890,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["lactose"],
+          "calories": 450
+        },
+        {
+          "name": "Tapioca de coco com leite condensado",
+          "description": "Tapioca doce com coco ralado fresco e leite condensado",
+          "priceCents": 1590,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["lactose"],
+          "calories": 410
+        },
+        {
+          "name": "Cartola",
+          "description": "Banana frita com queijo manteiga derretido, açúcar e canela",
+          "priceCents": 1890,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["lactose"],
+          "calories": 430
+        },
+        {
+          "name": "Suco de cajá 500 ml",
+          "description": "Suco natural de cajá batido na hora, sem leite",
+          "priceCents": 990,
+          "category": "DRINK",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 120
+        }
+      ]
+    },
+    {
+      "slug": "kaizen-sushi-bar",
+      "name": "Kaizen Sushi Bar",
+      "cuisine": "Japonesa",
+      "description": "Sushi, temaki e cozinha quente japonesa com peixe fresco todos os dias.",
+      "emoji": "🍣",
+      "rating": 4.8,
+      "deliveryFeeCents": 899,
+      "deliveryMinMinutes": 20,
+      "deliveryMaxMinutes": 30,
+      "minOrderCents": 5000,
+      "dishes": [
+        {
+          "name": "Combinado Kaizen 20 peças",
+          "description": "Niguiris de salmão e atum, uramaki de camarão empanado e hossomaki de salmão",
+          "priceCents": 8990,
+          "category": "MAIN",
+          "dietaryTags": ["high_protein"],
+          "allergens": ["fish", "shellfish", "gluten", "soy", "egg"],
+          "calories": 980,
+          "serves": 2
+        },
+        {
+          "name": "Combinado sashimi 30 peças",
+          "description": "Sashimis de salmão, atum e peixe branco; acompanha shoyu sem glúten",
+          "priceCents": 11990,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "lactose_free", "high_protein"],
+          "allergens": ["fish", "soy"],
+          "calories": 900,
+          "serves": 2
+        },
+        {
+          "name": "Uramaki Filadélfia 8 peças",
+          "description": "Arroz por fora, salmão, cream cheese e cebolinha, finalizado com gergelim",
+          "priceCents": 3890,
+          "category": "MAIN",
+          "dietaryTags": [],
+          "allergens": ["fish", "lactose"],
+          "calories": 460
+        },
+        {
+          "name": "Hot roll de salmão 10 peças",
+          "description": "Rolinho empanado e frito com salmão e cream cheese, coberto com molho tarê",
+          "priceCents": 3490,
+          "category": "SNACK",
+          "dietaryTags": [],
+          "allergens": ["fish", "gluten", "lactose", "soy", "egg"],
+          "calories": 620
+        },
+        {
+          "name": "Temaki de salmão",
+          "description": "Cone de alga nori com arroz, salmão fresco em cubos e cebolinha",
+          "priceCents": 3290,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "lactose_free", "high_protein"],
+          "allergens": ["fish"],
+          "calories": 380
+        },
+        {
+          "name": "Temaki vegano de shiitake e manga",
+          "description": "Cone de alga nori com arroz, shiitake grelhado, manga, pepino e cenoura",
+          "priceCents": 2690,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 310
+        },
+        {
+          "name": "Hossomaki de pepino 8 peças",
+          "description": "Kappamaki: rolinho fino de alga nori, arroz e pepino japonês",
+          "priceCents": 1690,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 180
+        },
+        {
+          "name": "Guioza de legumes 6 unidades",
+          "description": "Pastéis japoneses de massa de trigo recheados com repolho, cenoura e shiitake, selados na chapa",
+          "priceCents": 2490,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free"],
+          "allergens": ["gluten", "soy"],
+          "calories": 320
+        },
+        {
+          "name": "Sunomono",
+          "description": "Salada agridoce de pepino japonês com vinagre de arroz e gergelim",
+          "priceCents": 1290,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 90
+        },
+        {
+          "name": "Missoshiru",
+          "description": "Sopa de missô com tofu, alga wakame e cebolinha",
+          "priceCents": 1190,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free", "light"],
+          "allergens": ["soy"],
+          "calories": 80
+        },
+        {
+          "name": "Lámen de missô com chashu",
+          "description": "Caldo de missô, macarrão de trigo, barriga de porco chashu, ovo marinado e broto de bambu",
+          "priceCents": 4890,
+          "category": "MAIN",
+          "dietaryTags": ["high_protein"],
+          "allergens": ["gluten", "soy", "egg"],
+          "calories": 820
+        },
+        {
+          "name": "Yakisoba de legumes",
+          "description": "Macarrão de trigo com ovos salteado com brócolis, cenoura, repolho e acelga no molho shoyu",
+          "priceCents": 3990,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "lactose_free"],
+          "allergens": ["gluten", "soy", "egg"],
+          "calories": 690
+        },
+        {
+          "name": "Mochi de morango 2 unidades",
+          "description": "Bolinho de arroz glutinoso recheado com pasta de feijão azuki e morango",
+          "priceCents": 1890,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 230
+        },
+        {
+          "name": "Chá verde gelado 400 ml",
+          "description": "Chá verde japonês gelado, levemente adoçado",
+          "priceCents": 890,
+          "category": "DRINK",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 60
+        }
+      ]
+    },
+    {
+      "slug": "forno-da-vila",
+      "name": "Forno da Vila",
+      "cuisine": "Pizzaria",
+      "description": "Pizzas de fermentação natural assadas em forno a lenha, com opções vegana e sem glúten.",
+      "emoji": "🍕",
+      "rating": 4.6,
+      "deliveryFeeCents": 599,
+      "deliveryMinMinutes": 35,
+      "deliveryMaxMinutes": 50,
+      "minOrderCents": 3500,
+      "dishes": [
+        {
+          "name": "Pizza margherita",
+          "description": "Molho de tomate italiano, mussarela de búfala, manjericão fresco e azeite; 8 fatias",
+          "priceCents": 6290,
+          "category": "PIZZA",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose"],
+          "calories": 1900,
+          "serves": 2
+        },
+        {
+          "name": "Pizza calabresa",
+          "description": "Calabresa fatiada, cebola roxa, mussarela e azeitonas pretas; 8 fatias",
+          "priceCents": 5990,
+          "category": "PIZZA",
+          "dietaryTags": [],
+          "allergens": ["gluten", "lactose"],
+          "calories": 2100,
+          "serves": 2
+        },
+        {
+          "name": "Pizza quatro queijos",
+          "description": "Mussarela, gorgonzola, parmesão e provolone; 8 fatias",
+          "priceCents": 6890,
+          "category": "PIZZA",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose"],
+          "calories": 2300,
+          "serves": 2
+        },
+        {
+          "name": "Pizza portuguesa",
+          "description": "Presunto, ovo cozido, cebola, ervilha, azeitona e mussarela; 8 fatias",
+          "priceCents": 6690,
+          "category": "PIZZA",
+          "dietaryTags": [],
+          "allergens": ["gluten", "lactose", "egg"],
+          "calories": 2250,
+          "serves": 2
+        },
+        {
+          "name": "Pizza vegana de legumes assados",
+          "description": "Molho de tomate, abobrinha, berinjela, pimentão, cebola roxa e queijo vegetal de castanha-de-caju; 8 fatias",
+          "priceCents": 6490,
+          "category": "PIZZA",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free"],
+          "allergens": ["gluten", "nuts"],
+          "calories": 1700,
+          "serves": 2
+        },
+        {
+          "name": "Pizza de frango com requeijão sem glúten",
+          "description": "Massa de farinha de arroz, frango desfiado, requeijão cremoso e milho; 8 fatias",
+          "priceCents": 7290,
+          "category": "PIZZA",
+          "dietaryTags": ["gluten_free", "high_protein"],
+          "allergens": ["lactose"],
+          "calories": 1900,
+          "serves": 2
+        },
+        {
+          "name": "Pizza família pepperoni",
+          "description": "Pizza gigante de 12 fatias com pepperoni, mussarela e pimenta calabresa",
+          "priceCents": 11990,
+          "category": "PIZZA",
+          "dietaryTags": ["spicy"],
+          "allergens": ["gluten", "lactose"],
+          "calories": 3600,
+          "serves": 4
+        },
+        {
+          "name": "Brotinho de mussarela",
+          "description": "Pizza individual de 4 fatias com molho de tomate, mussarela e orégano",
+          "priceCents": 2990,
+          "category": "PIZZA",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose"],
+          "calories": 900
+        },
+        {
+          "name": "Calzone de frango com catupiry",
+          "description": "Massa fechada recheada com frango desfiado, catupiry e tomate",
+          "priceCents": 4590,
+          "category": "MAIN",
+          "dietaryTags": ["high_protein"],
+          "allergens": ["gluten", "lactose"],
+          "calories": 1100
+        },
+        {
+          "name": "Pão de alho 4 unidades",
+          "description": "Pão de fermentação natural com manteiga de alho e salsinha, assado no forno a lenha",
+          "priceCents": 1890,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose"],
+          "calories": 520
+        },
+        {
+          "name": "Bruschetta de tomate e manjericão",
+          "description": "Fatias de pão italiano tostado com tomate, manjericão, alho e azeite",
+          "priceCents": 2290,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free", "light"],
+          "allergens": ["gluten"],
+          "calories": 340
+        },
+        {
+          "name": "Brotinho de chocolate com morango",
+          "description": "Pizza doce de 4 fatias com chocolate ao leite e morangos frescos",
+          "priceCents": 3490,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose", "soy"],
+          "calories": 1100
+        },
+        {
+          "name": "Tiramisù",
+          "description": "Clássico italiano com biscoito champanhe, café, mascarpone e cacau",
+          "priceCents": 2190,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose", "egg"],
+          "calories": 450
+        },
+        {
+          "name": "Refrigerante lata 350 ml",
+          "description": "Refrigerante de cola ou guaraná, lata gelada",
+          "priceCents": 800,
+          "category": "DRINK",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 140
+        }
+      ]
+    },
+    {
+      "slug": "brasa-e-pao",
+      "name": "Brasa & Pão",
+      "cuisine": "Hamburgueria artesanal",
+      "description": "Hambúrgueres artesanais na brasa, pão brioche da casa e batatas rústicas.",
+      "emoji": "🍔",
+      "rating": 4.5,
+      "deliveryFeeCents": 499,
+      "deliveryMinMinutes": 30,
+      "deliveryMaxMinutes": 45,
+      "minOrderCents": 2500,
+      "dishes": [
+        {
+          "name": "Burger Brasa clássico",
+          "description": "Blend bovino de 180 g na brasa, cheddar, alface, tomate, cebola roxa e maionese da casa no pão brioche",
+          "priceCents": 3890,
+          "category": "MAIN",
+          "dietaryTags": ["high_protein"],
+          "allergens": ["gluten", "lactose", "egg"],
+          "calories": 850
+        },
+        {
+          "name": "Smash duplo com bacon",
+          "description": "Dois smash burgers de 90 g, cheddar duplo, bacon crocante e picles no pão brioche",
+          "priceCents": 4290,
+          "category": "MAIN",
+          "dietaryTags": ["high_protein"],
+          "allergens": ["gluten", "lactose", "egg"],
+          "calories": 980
+        },
+        {
+          "name": "Burger vegano de grão-de-bico",
+          "description": "Hambúrguer de grão-de-bico e beterraba, alface, tomate e maionese de aquafaba no pão vegano",
+          "priceCents": 3590,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free"],
+          "allergens": ["gluten", "soy"],
+          "calories": 690
+        },
+        {
+          "name": "Burger veggie de cogumelos",
+          "description": "Hambúrguer de cogumelos e arroz, queijo prato, rúcula e maionese de ervas no pão brioche",
+          "priceCents": 3790,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose", "egg"],
+          "calories": 720
+        },
+        {
+          "name": "Chicken crispy picante",
+          "description": "Sobrecoxa de frango empanada, picles, repolho roxo e molho picante de pimenta no pão brioche",
+          "priceCents": 3690,
+          "category": "MAIN",
+          "dietaryTags": ["spicy", "high_protein"],
+          "allergens": ["gluten", "egg"],
+          "calories": 830
+        },
+        {
+          "name": "Burger no prato sem pão",
+          "description": "Blend bovino de 180 g, cheddar, salada verde e batata rústica, servido sem pão",
+          "priceCents": 4190,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "high_protein"],
+          "allergens": ["lactose"],
+          "calories": 640
+        },
+        {
+          "name": "Combo família",
+          "description": "Quatro Burgers Brasa clássicos, duas batatas rústicas grandes e quatro refrigerantes",
+          "priceCents": 11490,
+          "category": "MAIN",
+          "dietaryTags": [],
+          "allergens": ["gluten", "lactose", "egg"],
+          "calories": 4200,
+          "serves": 4
+        },
+        {
+          "name": "Batata rústica com alecrim",
+          "description": "Batatas com casca assadas e fritas, alecrim e flor de sal",
+          "priceCents": 1890,
+          "category": "SNACK",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 420
+        },
+        {
+          "name": "Batata com cheddar e bacon",
+          "description": "Batata frita coberta com creme de cheddar e bacon crocante",
+          "priceCents": 2690,
+          "category": "SNACK",
+          "dietaryTags": ["gluten_free"],
+          "allergens": ["lactose"],
+          "calories": 780
+        },
+        {
+          "name": "Onion rings",
+          "description": "Anéis de cebola empanados na cerveja com molho barbecue",
+          "priceCents": 2190,
+          "category": "SNACK",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "egg", "lactose"],
+          "calories": 480
+        },
+        {
+          "name": "Milkshake de doce de leite",
+          "description": "Sorvete de creme batido com doce de leite e chantilly, 400 ml",
+          "priceCents": 2290,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["lactose"],
+          "calories": 620
+        },
+        {
+          "name": "Brownie com sorvete",
+          "description": "Brownie de chocolate meio amargo com nozes e bola de sorvete de creme",
+          "priceCents": 2190,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose", "egg", "nuts"],
+          "calories": 560
+        },
+        {
+          "name": "Limonada suíça 500 ml",
+          "description": "Limão batido com casca, gelo e leite condensado",
+          "priceCents": 1290,
+          "category": "DRINK",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["lactose"],
+          "calories": 230
+        }
+      ]
+    },
+    {
+      "slug": "raiz-verde",
+      "name": "Raiz Verde",
+      "cuisine": "Natural e vegana",
+      "description": "Cozinha natural com base vegetal: bowls, saladas, sopas e doces sem açúcar refinado.",
+      "emoji": "🥗",
+      "rating": 4.8,
+      "deliveryFeeCents": 399,
+      "deliveryMinMinutes": 25,
+      "deliveryMaxMinutes": 35,
+      "minOrderCents": 2000,
+      "dishes": [
+        {
+          "name": "Bowl de quinoa com legumes assados",
+          "description": "Quinoa, grão-de-bico, abóbora, brócolis e cenoura assados, folhas verdes e molho de tahine",
+          "priceCents": 3790,
+          "category": "MAIN",
+          "dietaryTags": [
+            "vegetarian",
+            "vegan",
+            "gluten_free",
+            "lactose_free",
+            "light",
+            "high_protein"
+          ],
+          "allergens": [],
+          "calories": 520
+        },
+        {
+          "name": "Strogonoff de cogumelos",
+          "description": "Cogumelos paris e shiitake no creme de leite de coco; acompanha arroz integral e batata palha",
+          "priceCents": 3990,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 610
+        },
+        {
+          "name": "Feijoada vegana",
+          "description": "Feijão-preto com tofu defumado, abóbora e linguiça vegetal; acompanha arroz, couve, farofa e laranja",
+          "priceCents": 4290,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "high_protein"],
+          "allergens": ["soy"],
+          "calories": 780
+        },
+        {
+          "name": "Wrap de falafel",
+          "description": "Tortilha integral com falafel, homus, pepino, tomate e folhas",
+          "priceCents": 3290,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free"],
+          "allergens": ["gluten"],
+          "calories": 590
+        },
+        {
+          "name": "Poke de tofu com amendoim",
+          "description": "Arroz, tofu marinado no shoyu, edamame, manga, pepino, cebola roxa e amendoim torrado",
+          "priceCents": 3890,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free", "high_protein"],
+          "allergens": ["soy", "gluten", "peanut"],
+          "calories": 560
+        },
+        {
+          "name": "Lasanha de abobrinha com ricota",
+          "description": "Lâminas de abobrinha em camadas com ricota temperada, espinafre e molho de tomate",
+          "priceCents": 3690,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "gluten_free", "light"],
+          "allergens": ["lactose", "egg"],
+          "calories": 430
+        },
+        {
+          "name": "Salada caesar com frango grelhado",
+          "description": "Alface romana, frango grelhado, parmesão, croutons e molho caesar com anchova",
+          "priceCents": 3490,
+          "category": "MAIN",
+          "dietaryTags": ["high_protein", "light"],
+          "allergens": ["gluten", "lactose", "egg", "fish"],
+          "calories": 450
+        },
+        {
+          "name": "Sopa de lentilha com gengibre",
+          "description": "Lentilha vermelha, cenoura, gengibre e cúrcuma, finalizada com azeite e coentro",
+          "priceCents": 2290,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 280
+        },
+        {
+          "name": "Pão de queijo 6 unidades",
+          "description": "Pão de queijo mineiro de polvilho com queijo meia-cura, assado na hora",
+          "priceCents": 1590,
+          "category": "SNACK",
+          "dietaryTags": ["vegetarian", "gluten_free"],
+          "allergens": ["lactose", "egg"],
+          "calories": 380
+        },
+        {
+          "name": "Mousse de cacau com abacate",
+          "description": "Mousse cremosa de cacau 70% e abacate, adoçada com tâmaras",
+          "priceCents": 1690,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 260
+        },
+        {
+          "name": "Bolo de cenoura integral",
+          "description": "Fatia de bolo de cenoura com farinha integral e cobertura de chocolate",
+          "priceCents": 1290,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "egg", "lactose"],
+          "calories": 340
+        },
+        {
+          "name": "Suco verde 400 ml",
+          "description": "Couve, abacaxi, hortelã e gengibre batidos com água de coco",
+          "priceCents": 1190,
+          "category": "DRINK",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 90
+        },
+        {
+          "name": "Kombucha de hibisco 300 ml",
+          "description": "Kombucha artesanal fermentada com hibisco e gengibre",
+          "priceCents": 1490,
+          "category": "DRINK",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free", "light"],
+          "allergens": [],
+          "calories": 60,
+          "available": false
+        }
+      ]
+    },
+    {
+      "slug": "cedro-do-libano",
+      "name": "Cedro do Líbano",
+      "cuisine": "Árabe",
+      "description": "Esfihas abertas, kibes, pastas e grelhados da cozinha libanesa de família.",
+      "emoji": "🧆",
+      "rating": 4.6,
+      "deliveryFeeCents": 599,
+      "deliveryMinMinutes": 30,
+      "deliveryMaxMinutes": 40,
+      "minOrderCents": 3000,
+      "dishes": [
+        {
+          "name": "Esfiha aberta de carne",
+          "description": "Esfiha de massa fininha com carne moída temperada, tomate, cebola e limão",
+          "priceCents": 890,
+          "category": "SNACK",
+          "dietaryTags": ["lactose_free"],
+          "allergens": ["gluten"],
+          "calories": 190
+        },
+        {
+          "name": "Esfiha aberta de queijo",
+          "description": "Esfiha de massa fininha com queijo branco e zaatar",
+          "priceCents": 890,
+          "category": "SNACK",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "lactose"],
+          "calories": 210
+        },
+        {
+          "name": "Esfiha fechada de espinafre",
+          "description": "Esfiha triangular recheada com espinafre, cebola, sumagre e limão",
+          "priceCents": 890,
+          "category": "SNACK",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free"],
+          "allergens": ["gluten"],
+          "calories": 170
+        },
+        {
+          "name": "Kibe frito 4 unidades",
+          "description": "Kibe de trigo para quibe e carne bovina, recheado com carne moída e cebola",
+          "priceCents": 2390,
+          "category": "SNACK",
+          "dietaryTags": ["lactose_free", "high_protein"],
+          "allergens": ["gluten"],
+          "calories": 560
+        },
+        {
+          "name": "Homus com pão sírio",
+          "description": "Pasta de grão-de-bico com tahine, limão e azeite; acompanha pão sírio",
+          "priceCents": 2490,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free"],
+          "allergens": ["gluten"],
+          "calories": 420
+        },
+        {
+          "name": "Babaganuche com pão sírio",
+          "description": "Pasta de berinjela defumada com tahine e romã; acompanha pão sírio",
+          "priceCents": 2490,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free"],
+          "allergens": ["gluten"],
+          "calories": 380
+        },
+        {
+          "name": "Falafel com molho de tahine 6 unidades",
+          "description": "Bolinhos fritos de grão-de-bico e ervas com molho de tahine e limão",
+          "priceCents": 2690,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 450
+        },
+        {
+          "name": "Tabule",
+          "description": "Salada de trigo para quibe, salsinha, hortelã, tomate, cebola, limão e azeite",
+          "priceCents": 2190,
+          "category": "STARTER",
+          "dietaryTags": ["vegetarian", "vegan", "lactose_free", "light"],
+          "allergens": ["gluten"],
+          "calories": 180
+        },
+        {
+          "name": "Shawarma de frango",
+          "description": "Pão sírio enrolado com frango marinado no espeto, creme de alho toum, picles e batata",
+          "priceCents": 3790,
+          "category": "MAIN",
+          "dietaryTags": ["lactose_free", "high_protein"],
+          "allergens": ["gluten"],
+          "calories": 720
+        },
+        {
+          "name": "Kafta grelhada com mjadra",
+          "description": "Espetos de kafta bovina na brasa com arroz com lentilha, cebola caramelizada e salada de pepino",
+          "priceCents": 4490,
+          "category": "MAIN",
+          "dietaryTags": ["gluten_free", "lactose_free", "high_protein"],
+          "allergens": [],
+          "calories": 780
+        },
+        {
+          "name": "Mjadra com cebola caramelizada",
+          "description": "Arroz com lentilha, cebola caramelizada crocante e salada de pepino com hortelã",
+          "priceCents": 2990,
+          "category": "MAIN",
+          "dietaryTags": ["vegetarian", "vegan", "gluten_free", "lactose_free"],
+          "allergens": [],
+          "calories": 540
+        },
+        {
+          "name": "Prato Cedro para dois",
+          "description": "Kafta, shawarma de frango, kibe, homus, tabule e pão sírio para compartilhar",
+          "priceCents": 9890,
+          "category": "MAIN",
+          "dietaryTags": ["lactose_free", "high_protein"],
+          "allergens": ["gluten"],
+          "calories": 2100,
+          "serves": 2
+        },
+        {
+          "name": "Baklava 3 unidades",
+          "description": "Massa folhada crocante com pistache, nozes, manteiga e calda de mel",
+          "priceCents": 1990,
+          "category": "DESSERT",
+          "dietaryTags": ["vegetarian"],
+          "allergens": ["gluten", "nuts", "lactose"],
+          "calories": 420
+        }
+      ]
+    }
+  ]
+}

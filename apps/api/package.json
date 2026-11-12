@@ -12,7 +12,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "dev": "nest start --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
     "lint": "eslint . --ext .ts --max-warnings 0",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
