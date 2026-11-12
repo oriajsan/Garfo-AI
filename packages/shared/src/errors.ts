@@ -14,6 +14,9 @@ export const ERROR_CODES = [
   'CART_ITEM_NOT_FOUND',
   'NOT_FOUND',
   'INTERNAL_ERROR',
+  'CONVERSATION_NOT_FOUND',
+  'LLM_ERROR',
+  'TOOL_TIMEOUT',
 ] as const;
 export const errorCodeSchema = z.enum(ERROR_CODES);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
@@ -25,6 +28,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   RESTAURANT_NOT_FOUND: 404,
   CART_ITEM_NOT_FOUND: 404,
   NOT_FOUND: 404,
+  CONVERSATION_NOT_FOUND: 404,
   DIFFERENT_RESTAURANT: 409,
   DISH_UNAVAILABLE: 409,
   BELOW_MIN_ORDER: 422,
@@ -32,6 +36,8 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   RATE_LIMITED: 429,
   BUDGET_EXCEEDED: 429,
   INTERNAL_ERROR: 500,
+  LLM_ERROR: 502,
+  TOOL_TIMEOUT: 504,
 };
 
 /** Error body returned by every failing endpoint: `{ error: { code, message } }`. */

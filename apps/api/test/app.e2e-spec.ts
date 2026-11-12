@@ -69,7 +69,11 @@ describe('Garfo API (e2e)', () => {
   describe('health and docs', () => {
     it('GET /health', async () => {
       const res = await api().get('/api/v1/health').expect(200);
-      expect(res.body).toEqual({ status: 'ok', db: 'ok' });
+      expect(res.body).toEqual({
+        status: 'ok',
+        db: 'ok',
+        llm: expect.stringMatching(/^(openai|fake)$/),
+      });
     });
 
     it('serves the API reference at /docs with every endpoint documented', async () => {

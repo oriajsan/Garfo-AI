@@ -1,4 +1,10 @@
-import { addCartItemSchema, searchDishesQuerySchema, updateCartItemSchema } from './index';
+import {
+  addCartItemSchema,
+  chatEventSchema,
+  chatRequestSchema,
+  searchDishesQuerySchema,
+  updateCartItemSchema,
+} from './index';
 
 describe('searchDishesQuerySchema', () => {
   it('applies the default limit and treats empty values as absent', () => {
@@ -41,5 +47,36 @@ describe('cart body schemas', () => {
     expect(addCartItemSchema.safeParse({ dishId: 'x', quantity: 1 }).success).toBe(false);
     expect(updateCartItemSchema.safeParse({ quantity: 0 }).success).toBe(true);
     expect(updateCartItemSchema.safeParse({ quantity: 1.5 }).success).toBe(false);
+  });
+});
+
+describe('chat schemas', () => {
+  it('trims the message and enforces 1 to 500 characters', () => {
+    expect(chatRequestSchema.parse({ message: '  oi  ' }).message).toBe('oi');
+    expect(chatRequestSchema.safeParse({ message: '   ' }).success).toBe(false);
+    expect(chatRequestSchema.safeParse({ message: 'x'.repeat(501) }).success).toBe(false);
+    expect(chatRequestSchema.safeParse({ message: 'x'.repeat(500) }).success).toBe(true);
+  });
+
+  it('accepts only uuid conversation ids', () => {
+    expect(chatRequestSchema.safeParse({ message: 'oi', conversationId: 'abc' }).success).toBe(
+      false,
+    );
+    expect(
+      chatRequestSchema.safeParse({
+        message: 'oi',
+        conversationId: '3b241101-e2bb-4255-8caf-4136c566a962',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('discriminates events by type', () => {
+    expect(chatEventSchema.safeParse({ type: 'token', data: { text: 'a' } }).success).toBe(true);
+    expect(chatEventSchema.safeParse({ type: 'token', data: {} }).success).toBe(false);
+    expect(chatEventSchema.safeParse({ type: 'nope', data: {} }).success).toBe(false);
+    expect(
+      chatEventSchema.safeParse({ type: 'error', data: { code: 'LLM_ERROR', message: 'x' } })
+        .success,
+    ).toBe(true);
   });
 });
