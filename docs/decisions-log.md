@@ -39,3 +39,15 @@ Decisões de arquitetura viram ADR em `docs/adr/`. Formato: data · bloco · dec
 - **D2.19 · `DELETE /cart`** devolve o carrinho com o id real e sem itens; `id: null` só quando não existe linha. `POST /cart/checkout` responde 200; `POST /cart/items`, 201.
 - **D2.20 · Piso do Node 20.19** aplicado em `engines`, `.nvmrc` e Dockerfile (`node:20.19-alpine`), após a revisão do bloco 2 apontar que a D2.13 só estava registrada.
 - **D2.21 · Ranking do fake é só lexical.** Com o `FakeEmbeddingProvider`, "vegetariano barato" traz sobremesas no topo (a palavra "barato" não existe nos textos). Aceito: os filtros estão corretos e, no modo demo do bloco 3, a política extrai os filtros da frase. Com embeddings reais o ranking é semântico.
+
+## Bloco 3 (decisões do briefing)
+
+- **D3.1 · Histórico começa sempre em `USER`.** Cortar as últimas 20 mensagens pode deixar um resultado de tool sem a chamada correspondente, e a OpenAI rejeita isso.
+- **D3.2 · Ids válidos para cards vêm de toda a conversa**, não só da rodada, para que "quero esse" funcione mensagens depois.
+- **D3.3 · Não truncar cards em 3.** A regra é do prompt; truncar no backend esconderia a falha da avaliação (`maxRecommendations`).
+- **D3.4 · Erro do provedor** vira evento `error` (`LLM_ERROR`) e a rodada não é persistida.
+- **D3.5 · `conversationId` inexistente ou de outra sessão** cria uma conversa nova em silêncio (o front pode ter um id antigo depois de um reset do banco).
+- **D3.6 · Texto do assistente persistido com os marcadores** (o modelo precisa dos ids no histórico); o endpoint de mensagens remove os marcadores e reconstrói os cards.
+- **D3.7 · Erros antes do stream são JSON normal (400/429)**; depois que o stream abre, viram evento `error`.
+- **D3.8 · Teto diário contado no banco** (mensagens `USER` desde a meia-noite de São Paulo): sobrevive a reinícios e funciona com mais de uma instância.
+- **D3.9 · Modo demonstração heurístico.** Sem chave, o `FakeLlmProvider` usa uma política determinística (regex de filtros + `search_dishes`/`add_to_cart`) para a demo do `docker compose up` funcionar de ponta a ponta, com aviso na interface (SPEC seção 9: "respostas roteirizadas e aviso na interface").
