@@ -1,3 +1,164 @@
-# Garfo-AI
+# Garfo
 
-Assistente de pedidos com IA: agente com tool calling, busca semântica com pgvector, NestJS e Next.js
+**Assistente de pedidos com IA:** você descreve o que quer comer em linguagem natural e um agente com tool calling busca pratos reais no banco, recomenda e monta o carrinho.
+
+[![CI](https://github.com/oriajsan/Garfo-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/oriajsan/Garfo-AI/actions/workflows/ci.yml)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-green.svg)](LICENSE)
+
+- **Demo:** <https://SEU-DEPLOY.vercel.app> <!-- TODO(owner): trocar pela URL real da Vercel depois do deploy -->
+- **Como funciona (para recrutadores):** <https://SEU-DEPLOY.vercel.app/como-funciona> <!-- TODO(owner): mesma URL da demo + /como-funciona -->
+
+<!-- TODO(owner): gravar o GIF conforme docs/gif-script.md -->
+
+![Garfo em ação: pergunta com filtros, cards de pratos e carrinho](docs/demo.gif)
+
+> Projeto de portfólio, inspirado em apps de delivery. Restaurantes e pratos são fictícios e nenhum pagamento é real.
+
+## O que ele faz
+
+1. **Entende pedidos em português:** "algo vegetariano, sem lactose, até R$ 40, que chegue em 30 min" vira uma busca com filtros estruturados.
+2. **Busca pratos reais, nunca inventados:** busca híbrida em Postgres com pgvector (filtros SQL + similaridade semântica) sobre 6 restaurantes e 80 pratos.
+3. **Recomenda e monta o carrinho:** até 3 opções em cards, adiciona ao carrinho quando você pede e avisa quando há conflito de restaurante.
+4. **Deixa a decisão final com você:** o checkout é um botão simulado, fora do alcance do modelo (veja o [ADR 005](docs/adr/005-checkout-fora-das-tools.md)).
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+  U[Usuário] --> W[Web Next.js]
+  W -- "POST /api/v1/chat (SSE)" --> C[ChatController]
+  W -- "REST: carrinho, catálogo" --> R[Controllers REST]
+  C --> A[AgentService: loop de tool calling]
+  A --> L[LlmProvider: OpenAI]
+  A --> T[ToolRegistry: 7 tools]
+  T --> S[SearchService: filtros + pgvector]
+  T --> K[CartService]
+  S --> E[EmbeddingProvider]
+  S --> D[(Postgres + pgvector)]
+  K --> D
+  R --> K
+  R --> S
+```
+
+**Fluxo de uma mensagem**
+
+1. O front envia `{ message, conversationId? }` com o header `X-Session-Id` (sessão anônima, sem login).
+2. O `AgentService` carrega o histórico da conversa e chama o LLM com o system prompt e as definições das tools.
+3. Se o LLM pedir tools, o `ToolRegistry` valida os argumentos com Zod, executa e devolve o resultado ao LLM. Repete até a resposta final ou o limite de 6 iterações.
+4. Cada etapa é emitida ao front como evento SSE: texto, tool em execução, cards de pratos e carrinho atualizado.
+5. A conversa e as mensagens são persistidas ao final.
+
+Uma versão ilustrada, com as 7 tools e as defesas contra alucinação, está em `/como-funciona`.
+
+## Decisões técnicas
+
+Cada decisão importante tem um ADR curto (contexto, decisão, alternativas e consequências):
+
+- [ADR 001: monorepo com pnpm](docs/adr/001-monorepo-com-pnpm.md): API, web e contratos Zod compartilhados mudam juntos, num só PR.
+- [ADR 002: pgvector em vez de banco vetorial dedicado](docs/adr/002-pgvector-em-vez-de-banco-vetorial-dedicado.md): filtros obrigatórios e similaridade na mesma consulta SQL.
+- [ADR 003: loop de agente próprio, sem framework](docs/adr/003-loop-de-agente-proprio-sem-framework.md): um `for` limitado a 6 iterações mostra que o mecanismo é entendido.
+- [ADR 004: SSE sobre POST, consumido com fetch](docs/adr/004-sse-via-post-com-fetch.md): `EventSource` não aceita POST, então o streaming usa `fetch` + `ReadableStream`.
+- [ADR 005: checkout fora das tools](docs/adr/005-checkout-fora-das-tools.md): ações irreversíveis ficam com o usuário, não com um modelo probabilístico.
+
+Outras decisões de detalhe estão em [`docs/decisions-log.md`](docs/decisions-log.md).
+
+## Qualidade
+
+- **Testes automatizados** (Jest, sem chamar o LLM real): regras do carrinho, schemas das tools, parser de marcadores, loop do agente com provedor falso, busca contra Postgres real e fluxos HTTP (Supertest). Rodam no CI a cada PR.
+- **Avaliação do agente** (`pnpm eval`, manual, com a chave real): 20 casos com expectativas verificadas por código, sem LLM como juiz. Cobre filtros simples, restrições e alergias, carrinho em várias mensagens, conflito de restaurante, buscas sem resultado, assuntos fora do escopo e prompt injection.
+
+| Métrica                          | Resultado      |
+| -------------------------------- | -------------- |
+| Taxa de acerto                   | XX% (XX de 20) |
+| Latência por resposta (p50, p95) | XX ms, XX ms   |
+| Custo por conversa de teste      | US$ XX         |
+| Modelo avaliado                  | XX             |
+
+Os valores `XX` são preenchidos depois da primeira execução com a chave real; o detalhe por caso fica em [`evals/results/latest.md`](evals/results/latest.md) e o que mudou entre versões do prompt em [`evals/results/history.md`](evals/results/history.md).
+
+Como funciona a avaliação: `pnpm eval` sobe o contexto do NestJS sem HTTP, chama o `AgentService` direto com uma sessão nova por caso, lê as tool calls persistidas e confere cada expectativa (argumentos das tools, pratos recomendados contra o banco, carrinho final, ids inventados). Antes de rodar, imprime quantos pratos do banco passam e quantos são eliminados pelos filtros de cada caso, para que nenhum caso seja fácil demais. Com `LLM_PROVIDER=fake` ele valida o harness sem chave e grava em `evals/results/fake-latest.md`, sem medir qualidade de LLM.
+
+## Como rodar
+
+Requisitos: Docker. Para desenvolvimento sem Docker na API e no web: Node 20.19+ e pnpm 9.
+
+### Com Docker, sem chave
+
+```bash
+docker compose up --build
+```
+
+Abra <http://localhost:3000>. Sem `OPENAI_API_KEY`, a API usa o **modo demonstração** (respostas heurísticas, com aviso na interface): dá para buscar com filtros, ver os cards, adicionar ao carrinho e finalizar. A documentação da API fica em <http://localhost:3001/docs>.
+
+### Com a chave da OpenAI
+
+```bash
+cp .env.example .env
+# edite o .env: LLM_PROVIDER=openai, OPENAI_API_KEY=..., LLM_CHAT_MODEL=<modelo com tool calling>
+docker compose up --build
+```
+
+O compose lê essas variáveis do `.env`. Os embeddings dos pratos são gerados uma única vez no primeiro start (custo de frações de centavo). Sem Docker na API e no web:
+
+```bash
+pnpm install
+docker compose up -d db
+pnpm db:setup        # migrate + seed + embed
+pnpm dev:api         # http://localhost:3001
+pnpm dev:web         # http://localhost:3000
+```
+
+### Avaliação com o LLM real
+
+```bash
+# .env com LLM_PROVIDER=openai, OPENAI_API_KEY e LLM_CHAT_MODEL
+pnpm db:embed        # embeddings reais (se o banco foi preparado com o provedor fake)
+pnpm eval            # TEM CUSTO: chama a API da OpenAI
+```
+
+O custo estimado usa `EVAL_PRICE_INPUT_USD_PER_MTOK` e `EVAL_PRICE_OUTPUT_USD_PER_MTOK` (padrões para um modelo pequeno, em `.env.example`). O workflow manual `.github/workflows/eval.yml` faz o mesmo no GitHub Actions. Para publicar o deploy, siga [`docs/deploy.md`](docs/deploy.md).
+
+## Estrutura de pastas
+
+```
+garfo-ai/
+├─ apps/
+│  ├─ api/         NestJS: prisma/ (schema, migrations, seed), src/ (chat, tools, catalog, cart, llm, prompts), scripts/, test/ (e2e)
+│  └─ web/         Next.js: src/app, components, lib, stores
+├─ packages/shared/ schemas Zod, tipos dos eventos SSE e DTOs
+├─ evals/          cases.json, run-evals.ts, checks, results/
+├─ data/seed/      restaurants.json (6 restaurantes, 80 pratos)
+├─ docs/           SPEC.md, adr/, deploy.md, decisions-log.md, gif-script.md
+├─ docker-compose.yml
+└─ .github/workflows/  ci.yml (a cada PR) e eval.yml (manual)
+```
+
+## Scripts
+
+| Comando          | O que faz                                              |
+| ---------------- | ------------------------------------------------------ |
+| `pnpm dev:api`   | API em modo watch                                      |
+| `pnpm dev:web`   | Front em modo dev                                      |
+| `pnpm lint`      | ESLint e Prettier                                      |
+| `pnpm typecheck` | TypeScript estrito em todos os pacotes                 |
+| `pnpm test`      | Testes unitários e de integração (precisa do Postgres) |
+| `pnpm test:e2e`  | Testes de ponta a ponta via HTTP                       |
+| `pnpm build`     | Build de todos os pacotes                              |
+| `pnpm db:setup`  | Migrations, seed e embeddings                          |
+| `pnpm eval`      | Avaliação do agente (custo com `LLM_PROVIDER=openai`)  |
+
+## Próximos passos
+
+- Busca por imagem do prato.
+- Preferências do usuário salvas entre sessões.
+- Segundo provedor de LLM (a interface `LlmProvider` já permite).
+- Observabilidade com traces das conversas.
+
+## Autor
+
+**Jairo Santana**
+
+- LinkedIn: <https://www.linkedin.com/in/SEU-PERFIL> <!-- TODO(owner): link do LinkedIn -->
+- Portfólio: <https://oriajsan.github.io>
+
+Licença [MIT](LICENSE).
