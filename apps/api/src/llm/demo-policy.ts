@@ -135,6 +135,9 @@ const PRICE_PATTERNS = [
   /(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real)\b/,
 ];
 
+/** What "barato" means in demo mode when the user gives no explicit price. */
+const CHEAP_PRICE_REAIS = 25;
+
 function searchArgs(message: string, text: string): SearchArgs {
   const args: SearchArgs = { query: message.trim().slice(0, 200) };
 
@@ -147,6 +150,10 @@ function searchArgs(message: string, text: string): SearchArgs {
         break;
       }
     }
+  }
+
+  if (args.max_price_reais === undefined && /\b(?:barat\w*|em conta)\b/.test(text)) {
+    args.max_price_reais = CHEAP_PRICE_REAIS;
   }
 
   const minutes = /(\d+)\s*(?:min|minutos)\b/.exec(text)?.[1];

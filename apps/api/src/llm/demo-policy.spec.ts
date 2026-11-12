@@ -33,6 +33,20 @@ describe('demoPolicy: searching', () => {
     expect(searchArgs('algo abaixo de R$ 30').max_price_reais).toBe(30);
   });
 
+  it('maps "barato" and friends to R$ 25 only when no explicit price is given', () => {
+    for (const phrase of [
+      'Uma sobremesa barata',
+      'algo barato',
+      'um baratinho',
+      'opção em conta',
+    ]) {
+      expect(searchArgs(phrase).max_price_reais).toBe(25);
+    }
+    expect(searchArgs('Uma sobremesa barata').category).toBe('DESSERT');
+    expect(searchArgs('algo barato até R$ 18').max_price_reais).toBe(18);
+    expect(searchArgs('uma pizza').max_price_reais).toBeUndefined();
+  });
+
   it('extracts delivery time and does not mistake it for price', () => {
     const args = searchArgs('quero algo que chegue em até 30 min');
     expect(args.max_delivery_minutes).toBe(30);
