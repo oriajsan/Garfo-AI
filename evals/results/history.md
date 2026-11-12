@@ -9,6 +9,7 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
 | v1 (prompt da SPEC)                                | 2026-11-12 | gemini-3.5-flash-lite                                  | 90% (18/20)                         | 20 892 ms / 37 662 ms (com a pausa do eval, ver nota) | não medido                     | US$ 0 (plano gratuito) | System prompt da seção 6 da SPEC                                            |
 | v2 (tags de característica + critério de conflito) | 2026-11-12 | gemini-3.5-flash-lite                                  | **95% (19/20)** (resultado oficial) | 21 315 ms / 57 522 ms (sem a pausa)                   | 2,8 de chat, 0,8 de embeddings | US$ 0 (plano gratuito) | Descrição de `dietary_tags`; critério de conflito por alternativas; medição |
 | v3 (timeout com fallback + reasoning_effort)       | 2026-11-12 | gemini-3.5-flash-lite (fallback gemini-3.1-flash-lite) | **95% (19/20)**                     | 8 183 ms / 31 855 ms (sem a pausa)                    | 2,8 de chat, 0,9 de embeddings | US$ 0 (plano gratuito) | Timeout de 15 s no primeiro chunk com fallback; `reasoning_effort=minimal`  |
+| v4 (final, oficial)                                | 2026-11-12 | gemini-3.5-flash-lite (fallback gemini-3.1-flash-lite) | **90% (18/20)**                     | 7 372 ms / 27 505 ms (sem a pausa)                    | 2,7 de chat, 0,9 de embeddings | US$ 0 (plano gratuito) | Contadores e rastro parcial corrigidos no eval; prompt e tools iguais à v3  |
 
 ## v1: prompt da SPEC
 
@@ -59,6 +60,42 @@ Registro do antes e depois de cada iteração do system prompt, das descrições
 - **Lição:**
   - Com provedor gratuito, cortar a cauda da latência (timeout no primeiro chunk com um modelo alternativo) rendeu mais que ajustar o raciocínio do modelo.
   - Métricas de infraestrutura precisam ser contadas também nos turnos que falham, senão escondem justamente os casos que importam.
+
+## v4: execução final (resultado oficial)
+
+- **O que mudou:** nada no agente. Prompt, tools e configuração são os mesmos da v3. Só o eval mudou: os contadores de retries, timeouts e fallbacks passaram a funcionar (`8c8d228`), e turnos interrompidos registram as tools iniciadas. Combinado antes de rodar: **este é o resultado oficial, seja qual for, e não há mais ciclos de ajuste.**
+- **Resultado:** **18/20 (90%)**, antes 19/20 na v3. 0 erros de infraestrutura. Tokens médios por caso: 6 257 de entrada e 226 de saída. Chamadas por caso: 2,7 de chat e 0,9 de embeddings. Latência p50 7,4 s e p95 27,5 s, sem a pausa.
+- **Provedor (primeira medição confiável):**
+  - 3 retries 429/503, somando 4 s de backoff.
+  - 4 timeouts de primeiro chunk e 3 usos do fallback. O fallback salvou 2 casos, `cart-clear` e `scope-code`.
+  - Em `diet-vegan-40`, o timeout aconteceu no modelo principal e no fallback.
+- **Casos que falharam:**
+  - `diet-vegan-40`: `LLM_TIMEOUT` no principal e no fallback, depois de iniciar `search_dishes` (o rastro parcial mostra que a busca rodou). Falha do provedor que conta como falha do agente (D6.15).
+  - `conflict-burger-then-hummus`: a resposta final veio cortada no meio da frase. Ela foi registrada como **ponto a investigar depois**, sem nenhum ajuste agora.
+- **Casos que mudaram em relação à v3:**
+  - `simple-dessert-15` voltou a passar (era timeout na v3).
+  - `diet-vegan-40` e `conflict-burger-then-hummus` passaram a falhar.
+  - Com 20 casos e um provedor gratuito instável, mudanças de 1 caso entre execuções estão dentro do ruído.
+
+### Ponto a investigar depois: resposta cortada em `conflict-burger-then-hummus`
+
+Resposta final registrada pelo eval, na íntegra:
+
+```
+O **Homus com pão sírio** ([[dish:e9e0a7df-235e-5305-8629-7c18beb6ae35]]) é do restaurante *
+```
+
+O texto termina em `*`, no meio de um negrito, sem citar o restaurante e sem pergunta ao usuário. O carrinho não misturou restaurantes, e só `finalReplyMentions` falhou. Hipóteses, não verificadas:
+
+- o stream terminou cedo do lado do provedor (`finish_reason` diferente de `stop`, ou conexão encerrada);
+- o parser de marcadores `[[dish:id]]` reteve texto no buffer e não o liberou no fim do stream;
+- o limite de `max_tokens` foi atingido com o thinking contando nele.
+
+Para investigar: registrar o `finish_reason` de cada chamada e conferir o flush do parser no fim do stream.
+
+- **Lição:**
+  - Medir o provedor direito mudou a leitura dos números. O fallback salva casos de verdade (2 de 3 usos).
+  - No plano gratuito ainda sobra cauda de latência e timeout duplo, que pesam no resultado de um eval pequeno.
 
 ## Modelo para novas versões (copie e preencha)
 

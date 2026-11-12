@@ -12,3 +12,9 @@ Os comandos exatos ficam em `docs/morning-report.md` ao final da sessão autôno
 | P5  | Rodar `pnpm eval` e preencher os `XX` no README e na linha do currículo                                                                                                 | Exige a chave real                                                       | 5     |
 | P6  | Gravar o GIF do README                                                                                                                                                  | Exige a demo rodando com o LLM real                                      | 5     |
 | P7  | Push das branches, PRs e merges em sequência ("Create a merge commit")                                                                                                  | Regra da sessão: nunca push/merge/rebase                                 | todos |
+
+## Atualização em 2026-11-12
+
+- **P1, P2, P3 e P5 concluídos** com o Gemini (ADR 006). O eval oficial deu 18/20 (90%) e os `XX` foram preenchidos no README, em `docs/resume-line.md` e em `apps/web/src/lib/eval-result.ts`.
+- **Pendentes:** P4 (deploy; depois dele, trocar `https://SEU-DEPLOY.vercel.app` no README e em `docs/resume-line.md`), P6 (GIF) e P7 (push e PRs).
+- **Ponto a investigar, sem prazo:** resposta cortada em `conflict-burger-then-hummus` (detalhes em `evals/results/history.md`, v4).

@@ -68,14 +68,14 @@ Outras decisões de detalhe estão em [`docs/decisions-log.md`](docs/decisions-l
 - **Testes automatizados** (Jest, sem chamar o LLM real): regras do carrinho, schemas das tools, parser de marcadores, loop do agente com provedor falso, busca contra Postgres real e fluxos HTTP (Supertest). Rodam no CI a cada PR.
 - **Avaliação do agente** (`pnpm eval`, manual, com a chave real): 20 casos com expectativas verificadas por código, sem LLM como juiz. Cobre filtros simples, restrições e alergias, carrinho em várias mensagens, conflito de restaurante, buscas sem resultado, assuntos fora do escopo e prompt injection.
 
-| Métrica                          | Resultado      |
-| -------------------------------- | -------------- |
-| Taxa de acerto                   | XX% (XX de 20) |
-| Latência por resposta (p50, p95) | XX ms, XX ms   |
-| Custo por conversa de teste      | US$ XX         |
-| Modelo avaliado                  | XX             |
+| Métrica                          | Resultado                                               |
+| -------------------------------- | ------------------------------------------------------- |
+| Taxa de acerto                   | 90% (18 de 20)                                          |
+| Latência por resposta (p50, p95) | 7.372 ms, 27.505 ms                                     |
+| Custo por conversa de teste      | US$ 0 (plano gratuito do Gemini)                        |
+| Modelo avaliado                  | gemini-3.5-flash-lite (fallback: gemini-3.1-flash-lite) |
 
-Os valores `XX` são preenchidos depois da primeira execução com a chave real; o detalhe por caso fica em [`evals/results/latest.md`](evals/results/latest.md) e o que mudou entre versões do prompt em [`evals/results/history.md`](evals/results/history.md).
+Execução oficial de 2026-11-12, com o Gemini pela camada compatível com a OpenAI ([ADR 006](docs/adr/006-provedor-compativel-com-openai-via-base-url.md)). As 2 falhas: `diet-vegan-40`, timeout do provedor no modelo principal e no fallback, que conta como falha do agente; e `conflict-burger-then-hummus`, resposta final cortada no meio da frase. O detalhe por caso fica em [`evals/results/latest.md`](evals/results/latest.md), e o que mudou entre as versões em [`evals/results/history.md`](evals/results/history.md).
 
 Como funciona a avaliação: `pnpm eval` sobe o contexto do NestJS sem HTTP, chama o `AgentService` direto com uma sessão nova por caso, lê as tool calls persistidas e confere cada expectativa (argumentos das tools, pratos recomendados contra o banco, carrinho final, ids inventados). Antes de rodar, imprime quantos pratos do banco passam e quantos são eliminados pelos filtros de cada caso, para que nenhum caso seja fácil demais. Com `LLM_PROVIDER=fake` ele valida o harness sem chave e grava em `evals/results/fake-latest.md`, sem medir qualidade de LLM.
 

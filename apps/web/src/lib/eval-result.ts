@@ -17,14 +17,14 @@ export interface EvalResult {
 }
 
 export const EVAL_RESULT: EvalResult = {
-  status: 'pending',
-  passRate: 'XX',
-  passed: 'XX',
+  status: 'done',
+  passRate: '90',
+  passed: '18',
   total: 20,
-  model: 'XX',
-  latencyP50Ms: 'XX',
-  latencyP95Ms: 'XX',
-  costPerConversationUsd: 'XX',
-  date: 'XX',
-  note: 'Aguardando a execução com a chave real da OpenAI.',
+  model: 'gemini-3.5-flash-lite (fallback: gemini-3.1-flash-lite)',
+  latencyP50Ms: '7.372',
+  latencyP95Ms: '27.505',
+  costPerConversationUsd: '0 (plano gratuito do Gemini)',
+  date: '2026-11-12',
+  note: 'Execução oficial de 2026-11-12.',
 };
