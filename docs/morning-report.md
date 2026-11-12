@@ -75,13 +75,13 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build
 
 ### 2. Criar a chave e preencher o `.env`
 
-**Opção sem custo: Gemini (ADR 006, D6.x).** Crie a chave em https://aistudio.google.com/apikey e use no `.env`:
+**Opção sem custo: Gemini (ADR 006, D6.x).** Para diagnosticar, `pnpm llm:smoke` roda um ciclo completo contra o provedor sem subir a API. Crie a chave em https://aistudio.google.com/apikey e use no `.env`:
 
 ```dotenv
 LLM_PROVIDER=openai
 OPENAI_API_KEY=<chave do Google AI Studio>
 OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-LLM_CHAT_MODEL=gemini-2.5-flash
+LLM_CHAT_MODEL=gemini-3.5-flash-lite   # alternativa mais lenta: gemini-3.5-flash
 LLM_EMBEDDING_MODEL=gemini-embedding-001
 EMBEDDING_DIMENSIONS=1536
 EVAL_PRICE_INPUT_USD_PER_MTOK=0
