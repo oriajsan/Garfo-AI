@@ -85,3 +85,12 @@ Versões fixadas por compatibilidade com Node 20 e Nest 10:
 - **`@scalar/nestjs-api-reference@1.0.31`** (exata): versões mais novas declaram `engines.node >= 22`. A 1.0.31 é a última que aceita Node 20. Ela depende de pacotes ESM; funciona em runtime no Node 20.19+ (`require` de ESM), e por isso o teste e2e substitui só esse módulo por um stub (o Jest roda em CommonJS).
 - **`@nestjs/swagger@^7`**: a linha compatível com Nest 10.
 - **`nestjs-zod@^5`** com `zod@^3.25`: gera o OpenAPI a partir dos mesmos schemas Zod do `packages/shared`.
+
+### Bloco 3: agente
+
+Ambas as dependências estão permitidas pelo briefing do bloco 3 (e `@nestjs/throttler` consta na lista da seção 3 da SPEC). Registradas aqui por completude:
+
+| Pacote                | Onde | Motivo                                                                                                                                                                                                            |
+| --------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `zod-to-json-schema`  | api  | Converte o schema Zod de cada tool no JSON Schema que os provedores de LLM esperam (SPEC seção 6), mantendo uma única fonte de verdade para validação e para a definição da tool.                                 |
+| `@nestjs/throttler@6` | api  | Rate limit de 15 req/min por IP e por sessão só em `POST /chat` (SPEC seção 6). A linha 6 aceita Nest 10 e Node 20; usada com dois _throttlers_ nomeados e um guard próprio que responde `RATE_LIMITED` em pt-BR. |
