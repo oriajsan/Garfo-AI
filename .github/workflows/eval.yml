@@ -32,6 +32,8 @@ jobs:
       DATABASE_URL: postgresql://garfo:garfo@localhost:5432/garfo
       LLM_PROVIDER: openai
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Optional: an OpenAI-compatible endpoint (e.g. Gemini). Empty = OpenAI default.
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
       # Model names come from repository variables (Settings > Variables), not from code.
       LLM_CHAT_MODEL: ${{ vars.LLM_CHAT_MODEL }}
       LLM_EMBEDDING_MODEL: ${{ vars.LLM_EMBEDDING_MODEL || 'text-embedding-3-small' }}

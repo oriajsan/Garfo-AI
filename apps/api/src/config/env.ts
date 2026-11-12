@@ -22,6 +22,8 @@ export const envSchema = z
     /** Optional: defaults to `openai` when OPENAI_API_KEY is set, `fake` otherwise (D1.4). */
     LLM_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['openai', 'fake']).optional()),
     OPENAI_API_KEY: optionalString,
+    /** Optional OpenAI-compatible endpoint (e.g. Gemini's). Unset = the OpenAI default. */
+    OPENAI_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     LLM_CHAT_MODEL: optionalString,
     LLM_EMBEDDING_MODEL: optionalString,
     EMBEDDING_DIMENSIONS: z.preprocess(

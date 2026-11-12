@@ -32,4 +32,12 @@ describe('validateEnv', () => {
   it('rejects wrong embedding dimensions without echoing values', () => {
     expect(() => validateEnv({ ...base, EMBEDDING_DIMENSIONS: '768' })).toThrow(/1536/);
   });
+
+  it('treats an empty OPENAI_BASE_URL as unset and validates it as a URL', () => {
+    expect(validateEnv({ ...base }).OPENAI_BASE_URL).toBeUndefined();
+    expect(validateEnv({ ...base, OPENAI_BASE_URL: '' }).OPENAI_BASE_URL).toBeUndefined();
+    const url = 'https://generativelanguage.googleapis.com/v1beta/openai/';
+    expect(validateEnv({ ...base, OPENAI_BASE_URL: url }).OPENAI_BASE_URL).toBe(url);
+    expect(() => validateEnv({ ...base, OPENAI_BASE_URL: 'not a url' })).toThrow(/OPENAI_BASE_URL/);
+  });
 });
