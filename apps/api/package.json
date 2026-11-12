@@ -10,6 +10,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "build": "nest build",
+    "build:bootstrap": "tsc -p tsconfig.bootstrap.json",
     "start": "node dist/main.js",
     "dev": "nest start --watch",
     "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
