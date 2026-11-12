@@ -104,6 +104,8 @@ export const expectationsSchema = z
   .object({
     mustCallTools: z.array(toolNameSchema).optional(),
     mustNotCallTools: z.array(toolNameSchema).optional(),
+    /** Minimum number of calls (counting repeats) per tool, e.g. `{ "add_to_cart": 2 }`. */
+    minToolCalls: z.record(toolNameSchema, z.number().int().min(1)).optional(),
     toolArgs: z.array(toolArgsExpectationSchema).optional(),
     recommendedDishesSatisfy: recommendedDishesSatisfySchema.optional(),
     /** At least this many dish cards in the whole conversation (otherwise "satisfy" is vacuous). */

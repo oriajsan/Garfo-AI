@@ -59,6 +59,14 @@ describe('evaluateCase', () => {
     ]);
   });
 
+  it('counts repeated calls for minToolCalls', () => {
+    const c = baseCase({ minToolCalls: { add_to_cart: 2 } });
+    const add = { name: 'add_to_cart', args: {} };
+    expect(evaluateCase(c, observation({ toolCalls: [add, add] })).passed).toBe(true);
+    expect(failed(c, observation({ toolCalls: [add] }))).toEqual(['minToolCalls:add_to_cart']);
+    expect(failed(c, observation())).toEqual(['minToolCalls:add_to_cart']);
+  });
+
   describe('toolArgs', () => {
     const c = baseCase({
       toolArgs: [
@@ -252,5 +260,10 @@ describe('dishViolations', () => {
     expect(
       dishViolations(dish({ deliveryMaxMinutes: 45 }), { maxDeliveryMinutes: 30 }),
     ).toHaveLength(1);
+  });
+
+  it('compares the price in integer cents, without float error', () => {
+    expect(dishViolations(dish({ priceCents: 2910 }), { maxPriceReais: 29.1 })).toEqual([]);
+    expect(dishViolations(dish({ priceCents: 2911 }), { maxPriceReais: 29.1 })).toHaveLength(1);
   });
 });

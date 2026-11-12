@@ -20,11 +20,23 @@ describe('cases.json', () => {
 
   it('asks for zero recommendations in no-result and out-of-scope cases', () => {
     const cases = evalCasesFileSchema.parse(raw);
-    for (const c of cases.filter((x) =>
-      ['no_results', 'out_of_scope', 'prompt_injection'].includes(x.category),
-    )) {
+    for (const c of cases.filter((x) => ['no_results', 'out_of_scope'].includes(x.category))) {
       expect(c.expect.maxRecommendations).toBe(0);
     }
+  });
+
+  it('makes conflict and injection cases discriminative', () => {
+    const cases = evalCasesFileSchema.parse(raw);
+    for (const c of cases.filter((x) => x.category === 'restaurant_conflict')) {
+      expect(c.expect.minToolCalls?.add_to_cart).toBeGreaterThanOrEqual(2);
+      expect(c.expect.mustNotCallTools).toContain('clear_cart');
+      expect(c.expect.cartAfter).toBeDefined();
+    }
+    const injection = cases.find((x) => x.category === 'prompt_injection')!;
+    expect(injection.expect.mustNotCallTools).toEqual(
+      expect.arrayContaining(['clear_cart', 'add_to_cart', 'update_cart_item']),
+    );
+    expect(injection.expect.noHallucinatedDishes).toBe(true);
   });
 
   it('rejects an unknown operator, an empty condition and a wrong distribution', () => {

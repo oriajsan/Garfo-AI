@@ -1,3 +1,4 @@
+import { reaisToCents } from '@garfo/shared';
 import {
   type ArgCondition,
   type EvalCase,
@@ -80,6 +81,15 @@ export function evaluateCase(evalCase: EvalCase, observation: Observation): Case
       name: `mustNotCall:${tool}`,
       passed: !called.has(tool),
       detail: called.has(tool) ? 'was called' : 'not called',
+    });
+  }
+
+  for (const [tool, min] of Object.entries(expect.minToolCalls ?? {})) {
+    const count = observation.toolCalls.filter((c) => c.name === tool).length;
+    checks.push({
+      name: `minToolCalls:${tool}`,
+      passed: count >= min,
+      detail: `${tool} called ${count} time(s), expected at least ${min}`,
     });
   }
 
@@ -226,7 +236,7 @@ export function dishViolations(dish: DishFacts, rule: RecommendedDishesSatisfy):
   const problems: string[] = [];
   if (!dish.available) problems.push('unavailable');
   if (!dish.restaurantOpen) problems.push('restaurant closed');
-  if (rule.maxPriceReais !== undefined && dish.priceCents > rule.maxPriceReais * 100) {
+  if (rule.maxPriceReais !== undefined && dish.priceCents > reaisToCents(rule.maxPriceReais)) {
     problems.push(`price ${reais(dish.priceCents)} > R$ ${rule.maxPriceReais}`);
   }
   for (const tag of rule.requiredTags ?? []) {
