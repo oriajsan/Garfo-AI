@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PrismaClient } from '@prisma/client';
-import { buildEmbeddingText, dishId, restaurantId, seedFileSchema } from './seed-data';
+import { buildEmbeddingText, dishId, restaurantId, seedFileSchema, seedStats } from './seed-data';
 
 /**
  * Deterministic seed: reads data/seed/restaurants.json, validates it and upserts everything
@@ -54,7 +54,22 @@ async function main(): Promise<void> {
       const stale = { id: { notIn: seededDishIds } };
       await tx.dish.deleteMany({ where: { ...stale, cartItems: { none: {} } } });
       await tx.dish.updateMany({ where: stale, data: { available: false } });
+
+      // Same for restaurants no longer in the JSON (only possible once their dishes are gone).
+      const staleRestaurants = { slug: { notIn: parsed.data.restaurants.map((r) => r.slug) } };
+      await tx.restaurant.deleteMany({ where: { ...staleRestaurants, dishes: { none: {} } } });
+      await tx.restaurant.updateMany({ where: staleRestaurants, data: { isOpen: false } });
     });
+
+    const stats = seedStats(parsed.data);
+    console.log(
+      [
+        `Seed counts (JSON): ${stats.dishes} dishes (${stats.available} available)`,
+        `  vegetarian ${stats.byTag.vegetarian}, vegan ${stats.byTag.vegan}, gluten_free ${stats.byTag.gluten_free}, lactose_free ${stats.byTag.lactose_free}`,
+        `  desserts <= R$ 15: ${stats.cheapDesserts}; gluten-free for 2+ under R$ 80: ${stats.glutenFreeForTwo}`,
+        `  vegetarian among dishes <= R$ 40: ${stats.vegetarianUpTo40}/${stats.upTo40}`,
+      ].join('\n'),
+    );
 
     const [restaurants, dishes, unavailable] = await Promise.all([
       prisma.restaurant.count(),

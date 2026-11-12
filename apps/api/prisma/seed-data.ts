@@ -26,6 +26,12 @@ const CONFLICTS: ReadonlyArray<{ tag: DietaryTag; forbidden: readonly Allergen[]
   { tag: 'vegan', forbidden: ['fish', 'shellfish', 'lactose', 'egg'] },
 ];
 
+/** Exactly one of tag / allergen must hold: `dietary_tags` and `exclude_allergens` filters agree. */
+const EXCLUSIVE_PAIRS: ReadonlyArray<{ tag: DietaryTag; allergen: Allergen }> = [
+  { tag: 'gluten_free', allergen: 'gluten' },
+  { tag: 'lactose_free', allergen: 'lactose' },
+];
+
 const seedDishSchema = z
   .object({
     name: z.string().min(3),
@@ -55,6 +61,24 @@ const seedDishSchema = z
             message: `vegan dishes must also be tagged ${implied}`,
           });
         }
+      }
+    }
+    // Tags and allergens must agree in both directions (D1.3).
+    for (const { tag, allergen } of EXCLUSIVE_PAIRS) {
+      const tagged = dish.dietaryTags.includes(tag);
+      const flagged = dish.allergens.includes(allergen);
+      if (tagged && flagged) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['allergens'],
+          message: `"${tag}" dish cannot list allergen "${allergen}"`,
+        });
+      } else if (!tagged && !flagged) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['dietaryTags'],
+          message: `dish without "${tag}" must list allergen "${allergen}"`,
+        });
       }
     }
     for (const { tag, forbidden } of CONFLICTS) {
@@ -93,13 +117,63 @@ const seedRestaurantSchema = z
     message: 'dish names must be unique within a restaurant',
   });
 
-/** Minimum variety the agent tests depend on (SPEC section 4). */
-const VARIETY_MINIMUMS: ReadonlyArray<{ tag: DietaryTag; min: number }> = [
-  { tag: 'vegetarian', min: 15 },
-  { tag: 'vegan', min: 8 },
+/**
+ * Variety the agent tests depend on (SPEC section 4), counting available dishes only.
+ * Vegetarian/vegan also have upper bounds so the filters really discriminate (D1.2).
+ */
+const VARIETY_RANGES: ReadonlyArray<{ tag: DietaryTag; min: number; max?: number }> = [
+  { tag: 'vegetarian', min: 15, max: 38 },
+  { tag: 'vegan', min: 8, max: 18 },
   { tag: 'gluten_free', min: 8 },
   { tag: 'lactose_free', min: 8 },
 ];
+
+const DIETARY_TAGS_COUNTED: readonly DietaryTag[] = [
+  'vegetarian',
+  'vegan',
+  'gluten_free',
+  'lactose_free',
+];
+
+interface SeedFileLike {
+  restaurants: ReadonlyArray<{
+    dishes: ReadonlyArray<{
+      priceCents: number;
+      category: string;
+      dietaryTags: readonly DietaryTag[];
+      serves: number;
+      available: boolean;
+    }>;
+  }>;
+}
+
+/** Counts used both for validation and for the summary printed by the seed. */
+export function seedStats(file: SeedFileLike) {
+  const dishes = file.restaurants.flatMap((r) => r.dishes);
+  const available = dishes.filter((d) => d.available);
+  const count = (list: typeof dishes, tag: DietaryTag): number =>
+    list.filter((d) => d.dietaryTags.includes(tag)).length;
+  const byTag = {} as Record<DietaryTag, number>;
+  const availableByTag = {} as Record<DietaryTag, number>;
+  for (const tag of DIETARY_TAGS_COUNTED) {
+    byTag[tag] = count(dishes, tag);
+    availableByTag[tag] = count(available, tag);
+  }
+  const cheap = dishes.filter((d) => d.priceCents <= 4000);
+  return {
+    restaurants: file.restaurants.length,
+    dishes: dishes.length,
+    available: available.length,
+    byTag,
+    availableByTag,
+    cheapDesserts: dishes.filter((d) => d.category === 'DESSERT' && d.priceCents <= 1500).length,
+    glutenFreeForTwo: dishes.filter(
+      (d) => d.dietaryTags.includes('gluten_free') && d.serves >= 2 && d.priceCents < 8000,
+    ).length,
+    upTo40: cheap.length,
+    vegetarianUpTo40: cheap.filter((d) => d.dietaryTags.includes('vegetarian')).length,
+  };
+}
 
 export const seedFileSchema = z
   .object({ restaurants: z.array(seedRestaurantSchema).length(6) })
@@ -110,13 +184,34 @@ export const seedFileSchema = z
       ctx.addIssue({ code: 'custom', path: ['restaurants'], message: 'duplicated slug' });
     }
     const dishes = file.restaurants.flatMap((r) => r.dishes);
-    for (const { tag, min } of VARIETY_MINIMUMS) {
-      const count = dishes.filter((d) => d.dietaryTags.includes(tag)).length;
-      if (count < min) {
+    const stats = seedStats(file);
+    for (const { tag, min, max } of VARIETY_RANGES) {
+      const count = stats.availableByTag[tag];
+      if (count < min || (max !== undefined && count > max)) {
         ctx.addIssue({
           code: 'custom',
           path: ['restaurants'],
-          message: `needs at least ${min} "${tag}" dishes, found ${count}`,
+          message: `needs ${min}..${max ?? 'any'} available "${tag}" dishes, found ${count}`,
+        });
+      }
+    }
+    const totals = [
+      { label: 'dishes tagged "vegetarian"', count: stats.byTag.vegetarian, min: 32, max: 38 },
+      { label: 'dishes tagged "vegan"', count: stats.byTag.vegan, min: 14, max: 18 },
+      { label: 'desserts up to R$ 15', count: stats.cheapDesserts, min: 3, max: Infinity },
+      {
+        label: 'gluten-free dishes serving 2+ under R$ 80',
+        count: stats.glutenFreeForTwo,
+        min: 2,
+        max: Infinity,
+      },
+    ];
+    for (const { label, count, min, max } of totals) {
+      if (count < min || count > max) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['restaurants'],
+          message: `needs ${min}..${max} ${label}, found ${count}`,
         });
       }
     }
