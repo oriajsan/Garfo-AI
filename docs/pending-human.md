@@ -18,3 +18,8 @@ Os comandos exatos ficam em `docs/morning-report.md` ao final da sessão autôno
 - **P1, P2, P3 e P5 concluídos** com o Gemini (ADR 006). O eval oficial deu 18/20 (90%) e os `XX` foram preenchidos no README, em `docs/resume-line.md` e em `apps/web/src/lib/eval-result.ts`.
 - **Pendentes:** P4 (deploy; depois dele, trocar `https://SEU-DEPLOY.vercel.app` no README e em `docs/resume-line.md`), P6 (GIF) e P7 (push e PRs).
 - **Ponto a investigar, sem prazo:** resposta cortada em `conflict-burger-then-hummus` (detalhes em `evals/results/history.md`, v4).
+
+## Atualização em 2026-11-13
+
+- **P4 concluído:** a demo está em <https://garfo-ai.vercel.app> (API na Railway, banco no Neon). A URL substituiu o placeholder no README (demo e `/como-funciona`) e em `docs/resume-line.md`.
+- **Pendentes:** P6 (GIF) e o link do LinkedIn (`SEU-PERFIL`) no README.
