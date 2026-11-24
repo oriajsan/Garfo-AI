@@ -195,7 +195,7 @@ garfo-ai/
 
 **Jairo Santana**
 
-- LinkedIn: <https://www.linkedin.com/in/SEU-PERFIL> <!-- TODO(owner): link do LinkedIn -->
+- LinkedIn: <https://www.linkedin.com/in/oriajsan>
 - Portfólio: <https://oriajsan.github.io>
 
 Licença [MIT](LICENSE).

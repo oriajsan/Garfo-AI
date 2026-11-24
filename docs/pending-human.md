@@ -22,4 +22,4 @@ Os comandos exatos ficam em `docs/morning-report.md` ao final da sessão autôno
 ## Atualização em 2026-11-13
 
 - **P4 concluído:** a demo está em <https://garfo-ai.vercel.app> (API na Railway, banco no Neon). A URL substituiu o placeholder no README (demo e `/como-funciona`) e em `docs/resume-line.md`.
-- **Pendentes:** P6 (GIF) e o link do LinkedIn (`SEU-PERFIL`) no README.
+- **Pendentes:** P6 (GIF). O link do LinkedIn já está no README.
