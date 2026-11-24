@@ -5,8 +5,8 @@
 [![CI](https://github.com/oriajsan/Garfo-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/oriajsan/Garfo-AI/actions/workflows/ci.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-green.svg)](LICENSE)
 
-- **Demo:** <https://SEU-DEPLOY.vercel.app> <!-- TODO(owner): trocar pela URL real da Vercel depois do deploy -->
-- **Como funciona (para recrutadores):** <https://SEU-DEPLOY.vercel.app/como-funciona> <!-- TODO(owner): mesma URL da demo + /como-funciona -->
+- **Demo:** <https://garfo-ai.vercel.app>
+- **Como funciona (para recrutadores):** <https://garfo-ai.vercel.app/como-funciona>
 
 <!-- TODO(owner): gravar o GIF conforme docs/gif-script.md -->
 
